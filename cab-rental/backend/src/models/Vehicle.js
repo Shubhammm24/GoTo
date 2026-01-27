@@ -1,0 +1,28 @@
+// Vehicle model
+const mongoose = require("mongoose");
+
+const vehicleSchema = new mongoose.Schema({
+  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  vehicleType: { type: String, enum: ["car", "bike", "scooter"] },
+  licensePlate: String,
+  brand: String,
+  model: String,
+  year: Number,
+  seatCapacity: Number,
+  registrationDoc: String,
+  insuranceDoc: String,
+  images: [String],
+  rentalType: { type: String, enum: ["self-drive", "driver-operated", "both"] },
+  pricePerHour: Number,
+  pricePerDay: Number,
+  isAvailable: { type: Boolean, default: true },
+  location: {
+    type: { type: String, enum: ["Point"], default: "Point" },
+    coordinates: { type: [Number], index: "2dsphere" }
+  },
+  rating: { type: Number, default: 0 },
+  totalRides: { type: Number, default: 0 },
+  isActive: { type: Boolean, default: true }
+}, { timestamps: true });
+
+module.exports = mongoose.model("Vehicle", vehicleSchema);
