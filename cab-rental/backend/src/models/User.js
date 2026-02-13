@@ -21,6 +21,17 @@ const userSchema = new mongoose.Schema({
     docType: String,
     docNumber: String,
     expiryDate: Date
+  },
+
+  // Safety and Emergency Settings
+  safetySettings: {
+    enableEmergencySharing: { type: Boolean, default: false },
+    shareLocationAfterRide: { type: Boolean, default: false },
+    sosEnabled: { type: Boolean, default: true },
+    emergencyContacts: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "EmergencyContact"
+    }]
   }
 }, { timestamps: true });
 

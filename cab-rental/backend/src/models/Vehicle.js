@@ -25,4 +25,7 @@ const vehicleSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
+// Add geospatial index for location-based queries
+vehicleSchema.index({ location: "2dsphere" });
+
 module.exports = mongoose.model("Vehicle", vehicleSchema);

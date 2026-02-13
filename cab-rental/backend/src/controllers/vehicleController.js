@@ -1,134 +1,151 @@
+// Vehicle controller
 const Vehicle = require("../models/Vehicle");
 
-/**
- * @desc   Create a new vehicle
- * @route  POST /api/vehicles
- * @access Protected (Vehicle Owner)
- */
-exports.createVehicle = async (req, res) => {
+// Get all vehicles (admin)
+exports.getAllVehicles = async (req, res, next) => {
   try {
-    const {
-      vehicleType,
-      licensePlate,
-      brand,
-      model,
-      rentalType,
-      pricePerHour,
-      pricePerDay,
-      location
-    } = req.body;
+    const vehicles = await Vehicle.find()
+      .populate('ownerId', 'name email phone')
+      .sort({ createdAt: -1 });
 
-    // Basic validation
-    if (!vehicleType || !licensePlate || !brand || !model || !rentalType) {
-      return res.status(400).json({
-        message: "Missing required vehicle fields"
-      });
+    res.json({
+      message: "Vehicles retrieved successfully",
+      vehicles,
+      total: vehicles.length
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Search vehicles based on location and filters
+exports.searchVehicles = async (req, res, next) => {
+  try {
+    const { lat, lng, vehicleType, rentalType, maxDistance = 10000 } = req.query;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ message: "Location coordinates required" });
     }
 
-    const vehicle = await Vehicle.create({
-      ownerId: req.user.id,          // from auth middleware
-      vehicleType,
-      licensePlate,
-      brand,
-      model,
-      rentalType,
-      pricePerHour,
-      pricePerDay,
-      location,
-      isActive: false                // admin approval required
-    });
+    const query = {
+      isAvailable: true,
+      isActive: true
+    };
 
-    return res.status(201).json({
+    if (vehicleType) {
+      query.vehicleType = vehicleType;
+    }
+
+    if (rentalType) {
+      query.$or = [
+        { rentalType: rentalType },
+        { rentalType: 'both' }
+      ];
+    }
+
+    // Find vehicles near location
+    const vehicles = await Vehicle.find({
+      ...query,
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(lng), parseFloat(lat)]
+          },
+          $maxDistance: parseInt(maxDistance)
+        }
+      }
+    })
+      .populate('ownerId', 'name phone rating')
+      .limit(20);
+
+    res.json({
+      message: "Vehicles found",
+      vehicles,
+      total: vehicles.length
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get vehicle by ID
+exports.getVehicleById = async (req, res, next) => {
+  try {
+    const vehicle = await Vehicle.findById(req.params.id)
+      .populate('ownerId', 'name email phone');
+
+    if (!vehicle) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    res.json({ vehicle });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create vehicle (admin)
+exports.createVehicle = async (req, res, next) => {
+  try {
+    const vehicleData = {
+      ...req.body,
+      ownerId: req.body.ownerId || req.user.id
+    };
+
+    // Ensure location is in correct GeoJSON format
+    if (vehicleData.location && !vehicleData.location.type) {
+      vehicleData.location = {
+        type: "Point",
+        coordinates: vehicleData.location.coordinates || [0, 0]
+      };
+    }
+
+    const vehicle = await Vehicle.create(vehicleData);
+
+    res.status(201).json({
       message: "Vehicle created successfully",
       vehicle
     });
   } catch (error) {
-    console.error("CREATE VEHICLE ERROR:", error);
-    return res.status(500).json({
-      message: "Failed to create vehicle",
-      error: error.message
-    });
+    next(error);
   }
 };
 
-/**
- * @desc   Get all approved vehicles
- * @route  GET /api/vehicles
- * @access Public
- */
-exports.getVehicles = async (req, res) => {
+// Update vehicle (admin)
+exports.updateVehicle = async (req, res, next) => {
   try {
-    const vehicles = await Vehicle.find({ isActive: true });
+    const updates = { ...req.body };
 
-    return res.status(200).json(vehicles);
-  } catch (error) {
-    console.error("GET VEHICLES ERROR:", error);
-    return res.status(500).json({
-      message: "Failed to fetch vehicles"
-    });
-  }
-};
-
-/**
- * @desc   Get single vehicle by ID
- * @route  GET /api/vehicles/:id
- * @access Public
- */
-exports.getVehicleById = async (req, res) => {
-  try {
-    const vehicle = await Vehicle.findById(req.params.id);
-
-    if (!vehicle) {
-      return res.status(404).json({
-        message: "Vehicle not found"
-      });
+    // Ensure location is in correct GeoJSON format if provided
+    if (updates.location && !updates.location.type) {
+      updates.location = {
+        type: "Point",
+        coordinates: updates.location.coordinates || [0, 0]
+      };
     }
 
-    return res.status(200).json(vehicle);
-  } catch (error) {
-    return res.status(500).json({
-      message: "Failed to fetch vehicle"
-    });
-  }
-};
-
-/**
- * @desc   Update vehicle (owner only)
- * @route  PUT /api/vehicles/:id
- * @access Protected
- */
-exports.updateVehicle = async (req, res) => {
-  try {
-    const vehicle = await Vehicle.findById(req.params.id);
+    const vehicle = await Vehicle.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    );
 
     if (!vehicle) {
       return res.status(404).json({ message: "Vehicle not found" });
     }
 
-    if (vehicle.ownerId.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-
-    Object.assign(vehicle, req.body);
-    await vehicle.save();
-
-    return res.status(200).json({
+    res.json({
       message: "Vehicle updated successfully",
       vehicle
     });
   } catch (error) {
-    return res.status(500).json({
-      message: "Failed to update vehicle"
-    });
+    next(error);
   }
 };
 
-/**
- * @desc   Delete vehicle (owner only)
- * @route  DELETE /api/vehicles/:id
- * @access Protected
- */
-exports.deleteVehicle = async (req, res) => {
+// Toggle vehicle availability (admin)
+exports.toggleAvailability = async (req, res, next) => {
   try {
     const vehicle = await Vehicle.findById(req.params.id);
 
@@ -136,18 +153,74 @@ exports.deleteVehicle = async (req, res) => {
       return res.status(404).json({ message: "Vehicle not found" });
     }
 
-    if (vehicle.ownerId.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
+    vehicle.isAvailable = !vehicle.isAvailable;
+    await vehicle.save();
 
-    await vehicle.deleteOne();
-
-    return res.status(200).json({
-      message: "Vehicle deleted successfully"
+    res.json({
+      message: `Vehicle ${vehicle.isAvailable ? 'enabled' : 'disabled'} successfully`,
+      vehicle
     });
   } catch (error) {
-    return res.status(500).json({
-      message: "Failed to delete vehicle"
-    });
+    next(error);
   }
 };
+
+// Delete vehicle (admin)
+exports.deleteVehicle = async (req, res, next) => {
+  try {
+    const vehicle = await Vehicle.findByIdAndDelete(req.params.id);
+
+    if (!vehicle) {
+      return res.status(404).json({ message: "Vehicle not found" });
+    }
+
+    res.json({ message: "Vehicle deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get nearby drivers (for customers to see live availability)
+exports.getNearbyDrivers = async (req, res, next) => {
+  try {
+    const { lat, lng, vehicleType, maxDistance = 5000 } = req.query;
+
+    if (!lat || !lng) {
+      return res.status(400).json({ message: "Location coordinates required" });
+    }
+
+    const query = {
+      isOnDuty: true,
+      isActive: true
+    };
+
+    if (vehicleType) {
+      query.vehicleType = vehicleType;
+    }
+
+    const drivers = await Driver.find({
+      ...query,
+      currentLocation: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(lng), parseFloat(lat)]
+          },
+          $maxDistance: parseInt(maxDistance)
+        }
+      }
+    })
+      .select('name phone vehicleType currentLocation rating totalRides')
+      .limit(10);
+
+    res.json({
+      message: "Nearby drivers found",
+      drivers,
+      total: drivers.length
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = exports;

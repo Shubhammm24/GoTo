@@ -1,14 +1,18 @@
-const express = require("express");
-const router = express.Router();
-
+// Vehicle routes
+const router = require("express").Router();
 const auth = require("../middleware/auth");
 const vehicleController = require("../controllers/vehicleController");
 
-router.get("/", vehicleController.getVehicles);
+// Public routes
+router.get("/search", vehicleController.searchVehicles);
+router.get("/nearby-drivers", vehicleController.getNearbyDrivers);
 router.get("/:id", vehicleController.getVehicleById);
 
-router.post("/", auth(["vehicle_owner"]), vehicleController.createVehicle);
-router.put("/:id", auth(["vehicle_owner"]), vehicleController.updateVehicle);
-router.delete("/:id", auth(["vehicle_owner"]), vehicleController.deleteVehicle);
+// Admin routes
+router.get("/", auth(["admin"]), vehicleController.getAllVehicles);
+router.post("/", auth(["admin"]), vehicleController.createVehicle);
+router.put("/:id", auth(["admin"]), vehicleController.updateVehicle);
+router.patch("/:id/toggle-availability", auth(["admin"]), vehicleController.toggleAvailability);
+router.delete("/:id", auth(["admin"]), vehicleController.deleteVehicle);
 
 module.exports = router;

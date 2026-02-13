@@ -32,3 +32,60 @@ exports.getDistanceAndDuration = async (pickup, drop) => {
     throw error;
   }
 };
+
+/**
+ * Convert address to coordinates (geocoding)
+ */
+exports.geocodeAddress = async (address) => {
+  try {
+    const url = "https://maps.googleapis.com/maps/api/geocode/json";
+
+    const res = await axios.get(url, {
+      params: {
+        address,
+        key: process.env.GOOGLE_MAPS_API_KEY
+      }
+    });
+
+    if (res.data.status !== "OK" || res.data.results.length === 0) {
+      throw new Error("Address not found");
+    }
+
+    const result = res.data.results[0];
+
+    return {
+      lat: result.geometry.location.lat,
+      lng: result.geometry.location.lng,
+      formattedAddress: result.formatted_address,
+      coordinates: [result.geometry.location.lng, result.geometry.location.lat]
+    };
+  } catch (error) {
+    console.error("❌ Geocode error:", error.message);
+    throw error;
+  }
+};
+
+/**
+ * Convert coordinates to address (reverse geocoding)
+ */
+exports.reverseGeocode = async (lat, lng) => {
+  try {
+    const url = "https://maps.googleapis.com/maps/api/geocode/json";
+
+    const res = await axios.get(url, {
+      params: {
+        latlng: `${lat},${lng}`,
+        key: process.env.GOOGLE_MAPS_API_KEY
+      }
+    });
+
+    if (res.data.status !== "OK" || res.data.results.length === 0) {
+      throw new Error("Location not found");
+    }
+
+    return res.data.results[0].formatted_address;
+  } catch (error) {
+    console.error("❌ Reverse geocode error:", error.message);
+    throw error;
+  }
+};

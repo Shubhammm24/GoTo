@@ -17,7 +17,7 @@ app.use(rateLimiter);
 
 // Health check endpoint
 app.get("/", (req, res) => {
-  res.json({ 
+  res.json({
     status: "success",
     message: "Cab Rental Backend Running 🚕",
     timestamp: new Date().toISOString()
@@ -26,7 +26,7 @@ app.get("/", (req, res) => {
 
 // API Health check
 app.get("/api", (req, res) => {
-  res.json({ 
+  res.json({
     status: "success",
     message: "API is working",
     version: "1.0.0",
@@ -48,6 +48,10 @@ app.use("/api/payments", require("./routes/payments"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/tracking", require("./routes/tracking"));
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/parcels", require("./routes/parcels"));
+app.use("/api/chat", require("./routes/chat"));
+app.use("/api/emergency", require("./routes/emergency"));
+
 
 // Error handler LAST
 app.use(errorHandler);

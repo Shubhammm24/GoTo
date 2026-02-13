@@ -83,7 +83,26 @@ const bookingSchema = new mongoose.Schema(
       enum: ["credit_card", "debit_card", "wallet", "upi"]
     },
 
-    specialRequests: String
+    specialRequests: String,
+
+    // Communication & Chat
+    communication: {
+      chatEnabled: { type: Boolean, default: true },
+      maskedDriverNumber: String,  // Twilio virtual number
+      maskedCustomerNumber: String,
+      chatExpiry: Date  // Auto-delete chat after this time
+    },
+
+    // Safety & Emergency
+    safetyStatus: {
+      sosActivated: { type: Boolean, default: false },
+      sosTimestamp: Date,
+      emergencyContactsNotified: { type: Boolean, default: false },
+      locationSharingActive: { type: Boolean, default: false }
+    },
+
+    actualStartTime: Date,
+    actualEndTime: Date
   },
   { timestamps: true }
 );

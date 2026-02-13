@@ -46,4 +46,7 @@ const driverSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Add schema-level geospatial index for location-based queries
+driverSchema.index({ currentLocation: "2dsphere" });
+
 module.exports = mongoose.model("Driver", driverSchema);

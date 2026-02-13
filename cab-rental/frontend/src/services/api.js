@@ -29,4 +29,120 @@ api.interceptors.response.use(
   }
 );
 
+// API Endpoints organized by feature
+
+// Auth
+export const authAPI = {
+  login: (email, password) => api.post('/auth/login', { email, password }),
+  register: (userData) => api.post('/auth/register', userData),
+  logout: () => api.post('/auth/logout'),
+};
+
+// Bookings
+export const bookingsAPI = {
+  create: (data) => api.post('/bookings', data),
+  getAll: () => api.get('/bookings'),
+  getUserBookings: () => api.get('/bookings/user'),
+  getById: (id) => api.get(`/bookings/${id}`),
+  assignDriver: (id) => api.post(`/bookings/${id}/assign-driver`),
+  complete: (id) => api.post(`/bookings/${id}/complete`),
+  cancel: (id) => api.delete(`/bookings/${id}/cancel`),
+};
+
+// Drivers
+export const driversAPI = {
+  register: (data) => api.post('/drivers/register', data),
+  completeRegistration: (data) => api.put('/drivers/complete-registration', data),
+  getProfile: () => api.get('/drivers/me'),
+  toggleAvailability: (data) => api.patch('/drivers/toggle-availability', data),
+  updateLocation: (coordinates) => api.patch('/drivers/update-location', { coordinates }),
+  getAssignedRides: () => api.get('/drivers/assigned-rides'),
+  acceptRide: (rideId) => api.post(`/drivers/rides/${rideId}/accept`),
+  rejectRide: (rideId, reason) => api.post(`/drivers/rides/${rideId}/reject`, { reason }),
+  startRide: (rideId) => api.post(`/drivers/rides/${rideId}/start`),
+  getEarnings: () => api.get('/drivers/earnings'),
+  getRideHistory: (params) => api.get('/drivers/ride-history', { params }),
+};
+
+// Parcels
+export const parcelsAPI = {
+  create: (data) => api.post('/parcels', data),
+  getMyParcels: () => api.get('/parcels/my-parcels'),
+  getById: (id) => api.get(`/parcels/${id}`),
+  assignDriver: (id, driverId) => api.post(`/parcels/${id}/assign-driver`, { driverId }),
+  confirmPickup: (id, pickupProof) => api.post(`/parcels/${id}/confirm-pickup`, { pickupProof }),
+  confirmDelivery: (id, deliveryProof) => api.post(`/parcels/${id}/confirm-delivery`, { deliveryProof }),
+  cancel: (id, reason) => api.post(`/parcels/${id}/cancel`, { reason }),
+};
+
+// Payments (Razorpay)
+export const paymentsAPI = {
+  createOrder: (data) => api.post('/payments/create-order', data),
+  verifyPayment: (data) => api.post('/payments/verify', data),
+  getByBooking: (bookingId) => api.get(`/payments/booking/${bookingId}`),
+  getHistory: () => api.get('/payments/history'),
+};
+
+// Emergency & Safety
+export const emergencyAPI = {
+  // Emergency Contacts
+  addContact: (data) => api.post('/emergency/contacts', data),
+  getContacts: () => api.get('/emergency/contacts'),
+  updateContact: (id, data) => api.put(`/emergency/contacts/${id}`, data),
+  deleteContact: (id) => api.delete(`/emergency/contacts/${id}`),
+
+  // SOS Alerts
+  triggerSOS: (data) => api.post('/emergency/sos', data),
+  shareLocation: (bookingId, location) => api.post(`/emergency/share-location/${bookingId}`, { location }),
+
+  // Settings
+  updateSettings: (data) => api.patch('/emergency/settings', data),
+
+  // Admin
+  getSOSAlerts: (params) => api.get('/emergency/sos-alerts', { params }),
+  resolveAlert: (id, data) => api.patch(`/emergency/sos-alerts/${id}/resolve`, data),
+};
+
+// Chat
+export const chatAPI = {
+  getMessages: (bookingId) => api.get(`/chat/booking/${bookingId}/messages`),
+  sendMessage: (bookingId, message) => api.post(`/chat/booking/${bookingId}/message`, { message }),
+  markAsRead: (bookingId) => api.patch(`/chat/booking/${bookingId}/read`),
+  deleteHistory: (bookingId) => api.delete(`/chat/booking/${bookingId}/messages`),
+};
+
+// Vehicles
+export const vehiclesAPI = {
+  create: (data) => api.post('/vehicles', data),
+  getAll: () => api.get('/vehicles'),
+  search: (params) => api.get('/vehicles/search', { params }),
+  getAvailable: (params) => api.get('/vehicles/available', { params }),
+  getOwnerVehicles: () => api.get('/vehicles/owner'),
+  getById: (id) => api.get(`/vehicles/${id}`),
+  update: (id, data) => api.put(`/vehicles/${id}`, data),
+  delete: (id) => api.delete(`/vehicles/${id}`),
+};
+
+// Users
+export const usersAPI = {
+  getProfile: () => api.get('/users/profile'),
+  updateProfile: (data) => api.put('/users/profile', data),
+  getById: (id) => api.get(`/users/${id}`),
+};
+
+// Reviews
+export const reviewsAPI = {
+  create: (data) => api.post('/reviews', data),
+  getByUser: (userId) => api.get(`/reviews/user/${userId}`),
+  getByBooking: (bookingId) => api.get(`/reviews/booking/${bookingId}`),
+};
+
+// Admin
+export const adminAPI = {
+  getDrivers: (params) => api.get('/drivers', { params }),
+  approveDriver: (id) => api.patch(`/admin/drivers/${id}/approve`),
+  getStats: () => api.get('/admin/stats'),
+  getAllBookings: () => api.get('/bookings'),
+};
+
 export default api;
