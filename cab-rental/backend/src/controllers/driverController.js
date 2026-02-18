@@ -3,7 +3,7 @@ const Booking = require("../models/Booking");
 
 exports.registerDriver = async (req, res, next) => {
   try {
-    const { licenseNumber, licenseExpiry, yearsOfExperience } = req.body;
+    const { licenseNumber, licenseExpiry, yearsOfExperience, vehicleDetails, bankDetails } = req.body;
 
     if (!licenseNumber || !licenseExpiry || !yearsOfExperience) {
       return res.status(400).json({ message: "Missing required driver fields" });
@@ -14,17 +14,26 @@ exports.registerDriver = async (req, res, next) => {
       return res.status(400).json({ message: "Driver with this license already exists" });
     }
 
+    // Check if user already has a driver profile
+    const existingProfile = await Driver.findOne({ userId: req.user.id });
+    if (existingProfile) {
+      return res.status(400).json({ message: "You already have a driver profile" });
+    }
+
     const driver = await Driver.create({
       userId: req.user.id,
       licenseNumber,
       licenseExpiry,
       yearsOfExperience,
+      vehicleDetails, // { brand, model, licensePlate, vehicleType, color, year }
+      bankDetails,    // { accountNumber, ifsc, accountName }
       isApproved: false,
+      isActive: false, // Ensure they are inactive until approved
       isOnDuty: false
     });
 
     return res.status(201).json({
-      message: "Driver registered successfully",
+      message: "Driver registered successfully. Pending admin approval.",
       driver
     });
   } catch (error) {
@@ -418,6 +427,74 @@ exports.getAllDrivers = async (req, res, next) => {
       count: drivers.length,
       drivers
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc   Get pending ride requests near driver's location
+ * @route  GET /api/drivers/pending-rides
+ * @access Protected (Driver)
+ */
+exports.getPendingRides = async (req, res, next) => {
+  try {
+    const driver = await Driver.findOne({ userId: req.user.id });
+
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    if (!driver.isOnDuty) {
+      return res.json({ success: true, rides: [], message: "Driver is off duty" });
+    }
+
+    // Fetch pending driver-operated bookings not yet assigned
+    const rides = await Booking.find({
+      status: { $in: ["pending", "requested"] },
+      rentalType: "driver-operated",
+      driverId: null
+    })
+      .populate("customerId", "name phone rating")
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    // Haversine helper
+    const haversine = (lat1, lon1, lat2, lon2) => {
+      const R = 6371;
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+      return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
+    };
+
+    const driverCoords = driver.currentLocation?.coordinates; // [lng, lat]
+
+    const enriched = rides
+      .map(ride => {
+        const distKm = ride.estimatedDistance || 0;
+        const estimatedEarnings = ride.totalAmount
+          ? Math.round(ride.totalAmount * 0.8)
+          : Math.round(12 + distKm * 2);
+
+        let distToPickup = null;
+        const pc = ride.pickupLocation?.coordinates; // [lng, lat]
+        if (driverCoords && driverCoords.length === 2 && pc && pc.length === 2) {
+          distToPickup = haversine(driverCoords[1], driverCoords[0], pc[1], pc[0]);
+        }
+
+        return { ...ride.toObject(), estimatedEarnings, distToPickup };
+      })
+      // Sort by distance to pickup (nulls last), then limit to 5 closest
+      .sort((a, b) => {
+        if (a.distToPickup == null) return 1;
+        if (b.distToPickup == null) return -1;
+        return a.distToPickup - b.distToPickup;
+      })
+      .filter(r => r.distToPickup == null || r.distToPickup <= 15) // within 15km
+      .slice(0, 5);
+
+    res.json({ success: true, count: enriched.length, rides: enriched });
   } catch (error) {
     next(error);
   }

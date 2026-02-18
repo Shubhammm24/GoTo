@@ -8,7 +8,7 @@ const driverController = require("../controllers/driverController");
 router.get("/", auth(["admin"]), driverController.getAllDrivers);
 
 // Register driver profile
-router.post("/register", auth(["customer"]), driverController.registerDriver);
+router.post("/register", auth(["customer", "driver"]), driverController.registerDriver);
 
 // Complete driver registration with documents
 router.put("/complete-registration", auth(["driver"]), driverController.completeRegistration);
@@ -30,6 +30,9 @@ router.get("/ride-history", auth(["driver"]), driverController.getRideHistory);
 
 // Get earnings
 router.get("/earnings", auth(["driver"]), driverController.getEarnings);
+
+// Get pending ride requests near driver
+router.get("/pending-rides", auth(["driver"]), driverController.getPendingRides);
 
 // Accept ride
 router.post("/rides/:rideId/accept", auth(["driver"]), driverController.acceptRide);

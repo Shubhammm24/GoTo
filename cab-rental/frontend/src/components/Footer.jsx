@@ -1,75 +1,86 @@
 import { Mail, Phone, MapPin, Facebook, Twitter, Instagram } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white mt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+    <footer className="bg-surface border-t border-white/5">
+      <div className="max-w-7xl mx-auto px-6 md:px-10 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
+
           {/* Brand */}
-          <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <span className="text-2xl">🚕</span>
-              <span className="text-xl font-bold">GoTo Cab</span>
+          <div className="md:col-span-1">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-neon-sm">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                </svg>
+              </div>
+              <span className="text-white font-bold text-lg">Go<span className="text-primary">To</span></span>
             </div>
-            <p className="text-gray-400 text-sm">
-              Your trusted ride-sharing partner for seamless travel experiences.
+            <p className="text-white/40 text-sm leading-relaxed">
+              Your trusted ride-sharing partner for seamless, safe, and affordable travel.
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="font-bold mb-4 text-lg">Quick Links</h3>
-            <ul className="space-y-2 text-gray-400 text-sm">
-              <li><a href="#" className="hover:text-white transition-colors">About Us</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">How It Works</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Safety</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Support</a></li>
+            <h3 className="text-white font-semibold text-sm mb-4">Quick Links</h3>
+            <ul className="space-y-2.5">
+              {['About Us', 'How It Works', 'Safety', 'Support'].map(link => (
+                <li key={link}>
+                  <a href="#" className="text-white/40 hover:text-primary text-sm transition-colors">{link}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Services */}
+          <div>
+            <h3 className="text-white font-semibold text-sm mb-4">Services</h3>
+            <ul className="space-y-2.5">
+              {['Book a Ride', 'Self Drive', 'Parcel Delivery', 'Business'].map(link => (
+                <li key={link}>
+                  <a href="#" className="text-white/40 hover:text-primary text-sm transition-colors">{link}</a>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Contact */}
           <div>
-            <h3 className="font-bold mb-4 text-lg">Contact Us</h3>
-            <ul className="space-y-3 text-gray-400 text-sm">
-              <li className="flex items-center space-x-2">
-                <Phone size={16} />
-                <span>+1 (555) 123-4567</span>
+            <h3 className="text-white font-semibold text-sm mb-4">Contact</h3>
+            <ul className="space-y-3">
+              <li className="flex items-center gap-2 text-white/40 text-sm">
+                <Phone size={14} className="text-primary shrink-0" />
+                +91 98765 43210
               </li>
-              <li className="flex items-center space-x-2">
-                <Mail size={16} />
-                <span>support@gotocab.com</span>
+              <li className="flex items-center gap-2 text-white/40 text-sm">
+                <Mail size={14} className="text-primary shrink-0" />
+                support@gotocab.in
               </li>
-              <li className="flex items-center space-x-2">
-                <MapPin size={16} />
-                <span>123 Street, City, State</span>
+              <li className="flex items-center gap-2 text-white/40 text-sm">
+                <MapPin size={14} className="text-primary shrink-0" />
+                Bengaluru, India
               </li>
             </ul>
-          </div>
-
-          {/* Social */}
-          <div>
-            <h3 className="font-bold mb-4 text-lg">Follow Us</h3>
-            <div className="flex space-x-4">
-              <a href="#" className="bg-gray-800 p-3 rounded-full hover:bg-blue-600 transition-colors">
-                <Facebook size={20} />
-              </a>
-              <a href="#" className="bg-gray-800 p-3 rounded-full hover:bg-blue-400 transition-colors">
-                <Twitter size={20} />
-              </a>
-              <a href="#" className="bg-gray-800 p-3 rounded-full hover:bg-pink-600 transition-colors">
-                <Instagram size={20} />
-              </a>
+            {/* Social */}
+            <div className="flex gap-2 mt-5">
+              {[Facebook, Twitter, Instagram].map((Icon, idx) => (
+                <a key={idx} href="#" className="w-9 h-9 rounded-xl bg-surface-2/50 border border-white/10 flex items-center justify-center text-white/40 hover:text-primary hover:border-primary/30 transition-all">
+                  <Icon size={16} />
+                </a>
+              ))}
             </div>
           </div>
         </div>
 
         {/* Bottom */}
-        <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
-          <p>&copy; 2026 GoTo Cab. All rights reserved.</p>
-          <div className="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-white transition-colors">Cookies</a>
+        <div className="border-t border-white/5 pt-6 flex flex-col md:flex-row justify-between items-center gap-3">
+          <p className="text-white/25 text-xs">© 2026 GoTo Cab. All rights reserved.</p>
+          <div className="flex gap-5">
+            {['Privacy Policy', 'Terms of Service', 'Cookies'].map(link => (
+              <a key={link} href="#" className="text-white/25 hover:text-white/50 text-xs transition-colors">{link}</a>
+            ))}
           </div>
         </div>
       </div>

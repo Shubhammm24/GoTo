@@ -1,69 +1,93 @@
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Navigation, Clock, AlertCircle } from 'lucide-react';
+import { MapPin, Navigation, Clock, AlertCircle, Phone, Shield } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+const DARK_TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const DARK_TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+// Placeholder driver location (Delhi)
+const DRIVER_POS = [28.6139, 77.2090];
 
 const TrackingPage = () => {
   const { bookingId } = useParams();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-bg-dark py-6 px-4">
+      <div className="max-w-5xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-soft overflow-hidden"
+          className="glass-card rounded-2xl overflow-hidden"
         >
-          {/* Map Section */}
-          <div className="w-full h-96 bg-gray-200 flex items-center justify-center relative overflow-hidden">
-            <div className="text-center">
-              <motion.div
-                animate={{ y: [0, -10, 0] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                className="text-6xl mb-4"
-              >
-                🗺️
-              </motion.div>
-              <p className="text-gray-600 font-medium">Real-time tracking map will appear here</p>
-              <p className="text-sm text-gray-500 mt-2">Booking ID: {bookingId}</p>
-            </div>
+          {/* Live Map */}
+          <div className="w-full" style={{ height: '380px' }}>
+            <MapContainer
+              center={DRIVER_POS}
+              zoom={13}
+              style={{ width: '100%', height: '100%' }}
+            >
+              <TileLayer url={DARK_TILE} attribution={DARK_TILE_ATTR} />
+              <Marker position={DRIVER_POS}>
+                <Popup>
+                  <div className="text-xs font-semibold">🚗 Your Driver</div>
+                  <div className="text-xs text-gray-500">En route to pickup</div>
+                </Popup>
+              </Marker>
+            </MapContainer>
           </div>
 
-          {/* Details Section */}
-          <div className="p-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">Trip Details</h1>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Trip Info */}
+          {/* Details */}
+          <div className="p-6">
+            {/* Status Banner */}
+            <div className="flex items-center gap-3 mb-6 p-4 bg-primary/10 border border-primary/20 rounded-xl">
+              <div className="w-2.5 h-2.5 bg-primary rounded-full animate-pulse" />
               <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Route Information</h2>
+                <p className="text-primary font-bold text-sm">Driver on the way</p>
+                <p className="text-white/40 text-xs">Booking ID: {bookingId}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Route Info */}
+              <div>
+                <h2 className="text-sm font-bold text-white/50 uppercase tracking-wide mb-4">Route</h2>
                 <div className="space-y-4">
-                  <div className="flex items-start space-x-4">
-                    <div className="text-green-500 mt-1">
-                      <MapPin size={24} />
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-green-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                      <MapPin size={14} className="text-green-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Pickup</p>
-                      <p className="font-bold text-gray-900">123 Main Street</p>
+                      <p className="text-white/40 text-xs">Pickup</p>
+                      <p className="text-white font-semibold text-sm">123 Main Street</p>
                     </div>
                   </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="text-red-500 mt-1">
-                      <Navigation size={24} />
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                      <Navigation size={14} className="text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Dropoff</p>
-                      <p className="font-bold text-gray-900">456 Park Avenue</p>
+                      <p className="text-white/40 text-xs">Dropoff</p>
+                      <p className="text-white font-semibold text-sm">456 Park Avenue</p>
                     </div>
                   </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="text-blue-500 mt-1">
-                      <Clock size={24} />
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                      <Clock size={14} className="text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Estimated Time</p>
-                      <p className="font-bold text-gray-900">15 minutes away</p>
+                      <p className="text-white/40 text-xs">ETA</p>
+                      <p className="text-white font-semibold text-sm">~15 minutes</p>
                     </div>
                   </div>
                 </div>
@@ -71,40 +95,43 @@ const TrackingPage = () => {
 
               {/* Driver Info */}
               <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Driver Information</h2>
-                <div className="bg-blue-50 rounded-xl p-6 text-center">
-                  <div className="text-6xl mb-4">👨‍💼</div>
-                  <p className="font-bold text-gray-900 text-lg">John Doe</p>
-                  <p className="text-gray-600 mb-4">⭐ 4.8 Rating</p>
-                  <div className="bg-white rounded-lg p-4 font-bold text-gray-900">
-                    🚗 Car - AB 1234 CD
+                <h2 className="text-sm font-bold text-white/50 uppercase tracking-wide mb-4">Driver</h2>
+                <div className="glass-card rounded-xl p-4 text-center">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center text-2xl mx-auto mb-3">
+                    👨‍💼
+                  </div>
+                  <p className="text-white font-bold">John Doe</p>
+                  <p className="text-white/40 text-xs mt-0.5">⭐ 4.8 · 142 rides</p>
+                  <div className="mt-3 px-3 py-2 bg-surface-2/50 rounded-lg text-white/60 text-xs font-mono">
+                    🚗 AB 1234 CD
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Alert */}
-            <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center space-x-3">
-              <AlertCircle className="text-yellow-600 flex-shrink-0" size={24} />
-              <div>
-                <p className="font-bold text-yellow-900">Driver on the way</p>
-                <p className="text-sm text-yellow-800">Please be ready with your luggage</p>
-              </div>
+            <div className="mt-5 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl flex items-center gap-3">
+              <AlertCircle size={16} className="text-yellow-400 shrink-0" />
+              <p className="text-yellow-300 text-xs font-medium">Please be ready at the pickup point with your luggage.</p>
             </div>
 
-            {/* Action Buttons */}
-            <div className="mt-8 grid grid-cols-2 gap-4">
+            {/* Actions */}
+            <div className="mt-5 grid grid-cols-2 gap-3">
               <motion.button
                 whileHover={{ scale: 1.02 }}
-                className="py-3 border-2 border-blue-500 text-blue-600 rounded-lg font-bold hover:bg-blue-50 transition-colors"
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center justify-center gap-2 py-3 bg-blue-500/15 border border-blue-500/30 text-blue-400 rounded-xl text-sm font-bold hover:bg-blue-500/25 transition-all"
               >
-                📞 Call Driver
+                <Phone size={16} />
+                Call Driver
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.02 }}
-                className="py-3 border-2 border-red-500 text-red-600 rounded-lg font-bold hover:bg-red-50 transition-colors"
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center justify-center gap-2 py-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-all"
               >
-                🚫 Cancel Ride
+                <Shield size={16} />
+                SOS Alert
               </motion.button>
             </div>
           </div>

@@ -1,158 +1,167 @@
 import { motion } from 'framer-motion';
-import { LogOut, Settings, CreditCard, MapPin, Star, TrendingUp } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { MapPin, TrendingUp, CreditCard, Star, Clock, Car, Settings, LogOut } from 'lucide-react';
+import { useAuthStore } from '../../store/index';
+import toast from 'react-hot-toast';
 
 const UserDashboard = () => {
-  const [user] = useState({
-    name: 'John Doe',
-    email: 'john@example.com',
-    phone: '+91 9876543210',
-    avatar: '👨',
-    rating: 4.8,
-    totalRides: 23,
-    totalSpent: 8450,
-    joinDate: '2024-01-01',
-  });
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    toast.success('Logged out successfully');
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5 },
-    },
-  };
+  const stats = [
+    { label: 'Total Rides', value: '23', icon: <Car size={20} />, color: 'text-primary', bg: 'bg-primary/10', change: '+3 this month' },
+    { label: 'Total Spent', value: '₹8,450', icon: <CreditCard size={20} />, color: 'text-green-400', bg: 'bg-green-500/10', change: '₹1,200 this month' },
+    { label: 'Avg Rating', value: '4.8', icon: <Star size={20} />, color: 'text-yellow-400', bg: 'bg-yellow-500/10', change: 'Top 10% rider' },
+    { label: 'Member Since', value: '1 yr', icon: <Clock size={20} />, color: 'text-blue-400', bg: 'bg-blue-500/10', change: 'Jan 2024' },
+  ];
+
+  const quickActions = [
+    { title: 'Book a Ride', desc: 'Find a driver now', icon: <MapPin size={24} />, link: '/booking', color: 'text-primary', bg: 'bg-primary/10 hover:bg-primary/20 border-primary/20' },
+    { title: 'Ride History', desc: 'View past trips', icon: <TrendingUp size={24} />, link: '/history', color: 'text-green-400', bg: 'bg-green-500/10 hover:bg-green-500/20 border-green-500/20' },
+    { title: 'Payments', desc: 'Manage wallet', icon: <CreditCard size={24} />, link: '/payment', color: 'text-blue-400', bg: 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20' },
+  ];
+
+  const recentRides = [
+    { from: 'Home', to: 'Office', date: 'Today, 9:00 AM', fare: '₹180', status: 'completed' },
+    { from: 'Mall', to: 'Airport', date: 'Yesterday, 3:30 PM', fare: '₹420', status: 'completed' },
+    { from: 'Gym', to: 'Home', date: '2 days ago', fare: '₹95', status: 'completed' },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12">
-      <div className="max-w-6xl mx-auto px-4">
+    <div className="min-h-screen bg-bg-dark py-8 px-4 md:px-8">
+      <div className="max-w-6xl mx-auto">
+
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-soft p-8 mb-8"
+          transition={{ duration: 0.5 }}
+          className="glass-card rounded-2xl p-6 mb-6 flex items-center justify-between"
         >
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-6">
-              <div className="text-6xl">{user.avatar}</div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{user.name}</h1>
-                <p className="text-gray-600 mt-2">{user.email}</p>
-                <p className="text-gray-600">{user.phone}</p>
-                <div className="flex items-center space-x-2 mt-3">
-                  <span className="text-yellow-400">{'⭐'.repeat(Math.floor(user.rating))}</span>
-                  <span className="font-bold text-gray-900">{user.rating}</span>
-                </div>
+          <div className="flex items-center gap-5">
+            {/* Avatar */}
+            <div className="w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center text-2xl font-black text-primary">
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">{user?.name || 'John Doe'}</h1>
+              <p className="text-white/40 text-sm mt-0.5">{user?.email}</p>
+              <div className="flex items-center gap-1 mt-1.5">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={12} className={i < 4 ? 'text-yellow-400 fill-yellow-400' : 'text-white/20'} />
+                ))}
+                <span className="text-white/50 text-xs ml-1">4.8 rating</span>
               </div>
             </div>
-            <div className="flex space-x-3">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="p-3 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
-              >
-                <Settings size={20} />
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="p-3 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors"
-              >
-                <LogOut size={20} />
-              </motion.button>
-            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="p-2.5 rounded-xl bg-surface-2/50 text-white/50 hover:text-white hover:bg-white/10 transition-all">
+              <Settings size={18} />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2.5 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </motion.div>
 
         {/* Stats Grid */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
-        >
-          {[
-            { label: 'Total Rides', value: user.totalRides, icon: '🚗', color: 'blue' },
-            { label: 'Total Spent', value: `₹${user.totalSpent}`, icon: '💰', color: 'green' },
-            { label: 'Rating', value: user.rating, icon: '⭐', color: 'yellow' },
-            { label: 'Member Since', value: '1 year', icon: '📅', color: 'purple' },
-          ].map((stat, idx) => (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {stats.map((stat, idx) => (
             <motion.div
               key={idx}
-              variants={itemVariants}
-              whileHover={{ scale: 1.05 }}
-              className={`bg-white rounded-2xl shadow-soft p-6 border-l-4 border-${stat.color}-500`}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: idx * 0.08 }}
+              className="glass-card rounded-2xl p-5 hover:border-white/15 transition-all"
             >
-              <div className="flex items-start justify-between mb-4">
-                <p className="text-gray-600 text-sm font-bold">{stat.label}</p>
-                <span className="text-2xl">{stat.icon}</span>
+              <div className={`w-10 h-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center mb-3`}>
+                {stat.icon}
               </div>
-              <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+              <p className="text-3xl font-black text-white mb-0.5">{stat.value}</p>
+              <p className="text-white/40 text-xs font-medium">{stat.label}</p>
+              <p className="text-white/25 text-[10px] mt-1">{stat.change}</p>
             </motion.div>
           ))}
-        </motion.div>
+        </div>
 
         {/* Quick Actions */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-        >
-          {[
-            { title: 'Book a Ride', icon: MapPin, color: 'blue', link: '/booking' },
-            { title: 'Ride History', icon: TrendingUp, color: 'green', link: '/history' },
-            { title: 'Wallet & Payments', icon: CreditCard, color: 'purple', link: '/payment' },
-          ].map((action, idx) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {quickActions.map((action, idx) => (
             <motion.div
               key={idx}
-              variants={itemVariants}
-              whileHover={{ scale: 1.05 }}
-              as={Link}
-              to={action.link}
-              className="bg-white rounded-2xl shadow-soft p-8 text-center cursor-pointer hover:shadow-lg transition-shadow"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 + idx * 0.08 }}
             >
-              <div className={`w-16 h-16 rounded-full bg-${action.color}-100 flex items-center justify-center mx-auto mb-4`}>
-                <action.icon className={`text-${action.color}-600`} size={32} />
-              </div>
-              <p className="text-xl font-bold text-gray-900">{action.title}</p>
+              <Link
+                to={action.link}
+                className={`flex items-center gap-4 p-5 rounded-2xl border glass-card ${action.bg} transition-all duration-200 group`}
+              >
+                <div className={`w-12 h-12 rounded-xl ${action.bg.split(' ')[0]} ${action.color} flex items-center justify-center shrink-0`}>
+                  {action.icon}
+                </div>
+                <div>
+                  <p className="text-white font-bold group-hover:text-primary transition-colors">{action.title}</p>
+                  <p className="text-white/40 text-sm">{action.desc}</p>
+                </div>
+              </Link>
             </motion.div>
           ))}
-        </motion.div>
+        </div>
 
-        {/* Upcoming Rides */}
+        {/* Recent Rides */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-2xl shadow-soft p-8"
+          transition={{ duration: 0.4, delay: 0.5 }}
+          className="glass-card rounded-2xl p-6"
         >
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Upcoming Rides</h2>
-          <div className="text-center py-8">
-            <p className="text-4xl mb-2">🎯</p>
-            <p className="text-gray-600">No upcoming rides scheduled</p>
-            <Link to="/booking">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-full font-bold hover:bg-blue-600 transition-colors"
-              >
-                Book Now
-              </motion.button>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-bold text-white">Recent Rides</h2>
+            <Link to="/history" className="text-primary text-sm font-medium hover:text-primary-dark transition-colors">
+              View All →
             </Link>
           </div>
+
+          {recentRides.length > 0 ? (
+            <div className="space-y-3">
+              {recentRides.map((ride, idx) => (
+                <div key={idx} className="flex items-center justify-between p-4 rounded-xl bg-surface-2/30 border border-white/5 hover:border-white/10 transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Car size={16} className="text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-semibold">{ride.from} → {ride.to}</p>
+                      <p className="text-white/40 text-xs">{ride.date}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white font-bold text-sm">{ride.fare}</p>
+                    <span className="badge-completed">{ride.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-4xl mb-3">🎯</div>
+              <p className="text-white/40 mb-4">No rides yet</p>
+              <Link to="/booking" className="btn-primary inline-flex items-center gap-2 text-sm px-5 py-2.5">
+                Book Your First Ride
+              </Link>
+            </div>
+          )}
         </motion.div>
       </div>
     </div>

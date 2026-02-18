@@ -17,8 +17,8 @@ const vehicleSchema = new mongoose.Schema({
   pricePerDay: Number,
   isAvailable: { type: Boolean, default: true },
   location: {
-    type: { type: String, enum: ["Point"], default: "Point" },
-    coordinates: { type: [Number], index: "2dsphere" }
+    type: { type: String, enum: ["Point"] },
+    coordinates: { type: [Number] }
   },
   rating: { type: Number, default: 0 },
   totalRides: { type: Number, default: 0 },

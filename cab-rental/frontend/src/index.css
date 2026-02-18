@@ -1,7 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Base Reset ─────────────────────────────────────────── */
 * {
   margin: 0;
   padding: 0;
@@ -13,82 +16,194 @@ html {
 }
 
 body {
-  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  background: #f5f7fa;
-  color: #1f2937;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0a0f1e;
+  color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar */
+/* ─── Scrollbar ──────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #111827;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #374151;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #f97415;
 }
 
-/* Button Animations */
-.btn-smooth {
-  @apply transition-all duration-300 ease-out transform hover:scale-105 active:scale-95;
+/* ─── Glassmorphism Utilities ────────────────────────────── */
+@layer components {
+  .glass-panel {
+    @apply bg-black/40 backdrop-blur-xl border border-white/10;
+  }
+
+  .glass-card {
+    background: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-card-light {
+    background: rgba(31, 41, 55, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .surface-card {
+    @apply bg-surface border border-white/5 rounded-2xl;
+  }
+
+  /* ─── Buttons ─────────────────────────────────────────── */
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-dark text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-neon-sm hover:shadow-neon active:scale-95 transform;
+  }
+
+  .btn-ghost {
+    @apply bg-white/5 hover:bg-white/10 text-white/80 hover:text-white font-medium px-6 py-3 rounded-xl border border-white/10 hover:border-white/20 transition-all duration-200;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-[0_0_20px_rgba(239, 68, 68, 0.3)];
+  }
+
+  /* ─── Form Inputs ─────────────────────────────────────── */
+  .input-dark {
+    @apply w-full bg-surface-2 border border-white/10 text-white placeholder-white/30 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200;
+  }
+
+  /* ─── Cards ───────────────────────────────────────────── */
+  .stat-card {
+    @apply bg-surface border border-white/5 rounded-2xl p-6 hover:border-primary/30 transition-all duration-300 group;
+  }
+
+  .nav-link {
+    @apply text-white/60 hover:text-white transition-colors duration-200 font-medium text-sm;
+  }
+
+  .nav-link-active {
+    @apply text-primary font-semibold;
+  }
+
+  /* ─── Status Badges ───────────────────────────────────── */
+  .badge-pending {
+    @apply bg-yellow-500/15 text-yellow-400 border border-yellow-500/20 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .badge-confirmed {
+    @apply bg-blue-500/15 text-blue-400 border border-blue-500/20 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .badge-in-progress {
+    @apply bg-primary/15 text-primary border border-primary/20 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .badge-completed {
+    @apply bg-green-500/15 text-green-400 border border-green-500/20 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+
+  .badge-cancelled {
+    @apply bg-red-500/15 text-red-400 border border-red-500/20 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
 }
 
-/* Card Hover Effect */
-.card-hover {
-  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
-}
-
-/* Loading Spinner */
-.spinner {
-  @apply inline-block animate-spin;
-}
-
-/* Fade Animations */
-@keyframes fadeInUp {
-  from {
+/* ─── Live Marker Animation ──────────────────────────────── */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.33);
     opacity: 0;
-    transform: translateY(20px);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-@keyframes slideDown {
-  from {
+  80%,
+  100% {
     opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 
-.fade-in-up {
-  animation: fadeInUp 0.6s ease-out;
+@keyframes pulse-dot {
+  0% {
+    transform: scale(0.8);
+  }
+
+  50% {
+    transform: scale(1);
+  }
+
+  100% {
+    transform: scale(0.8);
+  }
 }
 
-.slide-down {
-  animation: slideDown 0.4s ease-out;
+.live-marker {
+  position: absolute;
+  width: 16px;
+  height: 16px;
 }
 
-/* Smooth transitions */
-a, button, input, select, textarea {
-  @apply transition-colors duration-200;
+.live-marker::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  width: 300%;
+  height: 300%;
+  box-sizing: border-box;
+  margin-left: -100%;
+  margin-top: -100%;
+  border-radius: 50%;
+  background-color: rgba(249, 116, 21, 0.3);
+  animation: pulse-ring 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
 
-/* Focus states */
-input:focus, select:focus, textarea:focus {
-  @apply outline-none ring-2 ring-blue-500 ring-opacity-50;
+.live-marker::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-color: #f97415;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(249, 116, 21, 0.6);
+  animation: pulse-dot 2.5s cubic-bezier(0.455, 0.03, 0.515, 0.955) -0.4s infinite;
+}
+
+/* ─── Neon Glow ──────────────────────────────────────────── */
+.neon-glow {
+  box-shadow: 0 0 10px rgba(249, 116, 21, 0.3);
+}
+
+/* ─── Focus States ───────────────────────────────────────── */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+}
+
+/* ─── Smooth Transitions ─────────────────────────────────── */
+a,
+button {
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ─── Map Background Grid ────────────────────────────────── */
+.map-grid-bg {
+  background-image:
+    linear-gradient(rgba(249, 116, 21, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(249, 116, 21, 0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
 }

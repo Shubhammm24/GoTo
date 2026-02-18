@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GoTo - Self Drive Rentals</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#f97415",
+              "background-light": "#f8f7f5",
+              "background-dark": "#0f172a", // Dark navy/slate base
+              "surface-dark": "#1e293b",
+            },
+            fontFamily: {
+              "display": ["Inter", "sans-serif"]
+            },
+            backgroundImage: {
+              'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+              'glass': 'linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)',
+            },
+          },
+        },
+      }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            border-color: rgba(249, 116, 21, 0.5);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-background-dark font-display text-white antialiased selection:bg-primary selection:text-white">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-slate-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-[#0B1120]">
+<!-- Header -->
+<header class="sticky top-0 z-50 flex items-center justify-between border-b border-white/10 glass-panel px-6 py-4 md:px-10">
+<div class="flex items-center gap-4">
+<div class="size-8 text-primary">
+<svg class="w-full h-full" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-xl font-bold tracking-tight text-white">GoTo</h2>
+</div>
+<nav class="hidden md:flex flex-1 justify-center gap-8">
+<a class="text-gray-400 hover:text-white text-sm font-medium transition-colors" href="#">Ride</a>
+<a class="text-gray-400 hover:text-white text-sm font-medium transition-colors" href="#">Delivery</a>
+<a class="text-primary text-sm font-bold border-b-2 border-primary pb-0.5" href="#">Rentals</a>
+<a class="text-gray-400 hover:text-white text-sm font-medium transition-colors" href="#">Support</a>
+</nav>
+<div class="flex items-center gap-4">
+<div class="flex gap-2">
+<button class="hidden sm:flex h-9 items-center justify-center rounded-lg px-4 text-sm font-medium text-white hover:bg-white/5 transition-colors">
+                        Log In
+                    </button>
+<button class="flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-lg shadow-primary/20 hover:bg-orange-600 transition-colors">
+                        Sign Up
+                    </button>
+</div>
+<div class="size-9 rounded-full bg-cover bg-center border border-white/20" data-alt="User profile picture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAM2McWE1snbtujkYTmKXsj4NOr1KGeNAXAKs5Z9pFN6UHIyImAZxvY8_9UknBVqgzHkVv8DR4vW2ZxDIfJuzpPtTp9tnazZR7UhmSuhtrqDkyry4RZhn2pwifbYfyO6Qbn3C_ZESg79SMJPeJI2HktI6UySQmJrZ0ynK_UDwC7IhC7yLL5Xp7b0iHjBh8gZ537vRtGbzC2AoUoYYfmh3GPTkJPh6HKyJI6tX3IYUpdaqLTzPTAkV0SGp2pHfzUJ7ru2WOH0wYfULc9");'></div>
+</div>
+</header>
+<main class="flex-grow container mx-auto px-4 py-8 md:px-8 lg:px-12 max-w-7xl">
+<!-- Hero Section -->
+<div class="relative overflow-hidden rounded-2xl bg-cover bg-center mb-12 border border-white/10 shadow-2xl" data-alt="Futuristic car on a dark highway" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBKbxGdVpSB-6lfvYFc-4P9w2TtFfOkmGpHngoQhNrUlWzLu6jyrNN7FVV-epnJGXd5zNGZJR_gwk5t2epuL5svCstrCmCwbH0v9hDfucyPz88uA-RWSyRVy6UN2GVfcCDOVi-Ou24ZcShdgRLOsxq8bYziuHO_JyDAYv5zaZhJy3KADWpTI9TcMHnCQ6pxnPrJRQCKDbYcgKsB3gda8STtoQxY0Imcn3y06XK4CABd9tYBOZ44iRjQFw4hXcF2Nz8P7MdGKR0D7j2n");'>
+<div class="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
+<div class="relative z-10 p-8 md:p-16 flex flex-col items-start gap-4 max-w-2xl">
+<span class="inline-flex items-center rounded-full bg-primary/20 px-3 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/40">Premium Fleet</span>
+<h1 class="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight tracking-tight">
+                        Experience the <br/><span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">Future of Drive</span>
+</h1>
+<p class="text-gray-300 text-lg md:text-xl max-w-md">Unlock high-performance electric vehicles instantly. No keys, no paperwork, just drive.</p>
+<div class="flex gap-4 mt-4">
+<button class="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-white transition-transform hover:scale-105 shadow-lg shadow-primary/25">
+<span class="material-symbols-outlined text-[20px]">electric_car</span>
+                            View Fleet
+                        </button>
+<button class="flex items-center gap-2 rounded-xl bg-white/10 backdrop-blur-md px-6 py-3 font-bold text-white transition-colors hover:bg-white/20 border border-white/10">
+                            Learn More
+                        </button>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Left Column: Calendar & Pricing -->
+<div class="lg:col-span-5 flex flex-col gap-6">
+<!-- Calendar Module -->
+<div class="glass-panel rounded-2xl p-6">
+<div class="flex items-center justify-between mb-6">
+<h3 class="text-xl font-bold text-white flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">calendar_month</span>
+                                Availability
+                            </h3>
+<div class="flex gap-2">
+<button class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<span class="text-sm font-semibold text-white pt-2">Oct 2023</span>
+<button class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Calendar Grid -->
+<div class="grid grid-cols-7 gap-1 text-center mb-4">
+<div class="text-xs font-bold text-gray-500 uppercase tracking-wider py-2">S</div>
+<div class="text-xs font-bold text-gray-500 uppercase tracking-wider py-2">M</div>
+<div class="text-xs font-bold text-gray-500 uppercase tracking-wider py-2">T</div>
+<div class="text-xs font-bold text-gray-500 uppercase tracking-wider py-2">W</div>
+<div class="text-xs font-bold text-gray-500 uppercase tracking-wider py-2">T</div>
+<div class="text-xs font-bold text-gray-500 uppercase tracking-wider py-2">F</div>
+<div class="text-xs font-bold text-gray-500 uppercase tracking-wider py-2">S</div>
+<!-- Empty days -->
+<div class="p-2"></div><div class="p-2"></div><div class="p-2"></div>
+<!-- Days -->
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-gray-400 hover:bg-white/5 mx-auto">1</button>
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-gray-400 hover:bg-white/5 mx-auto">2</button>
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-gray-400 hover:bg-white/5 mx-auto">3</button>
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-white bg-white/10 mx-auto">4</button>
+<!-- Selected Range Start -->
+<button class="size-10 rounded-full flex items-center justify-center text-sm font-bold text-white bg-primary shadow-lg shadow-primary/40 mx-auto relative z-10">5</button>
+<!-- Selected Range Middle -->
+<button class="h-10 w-full flex items-center justify-center text-sm text-white bg-primary/20 -mx-3 col-span-1">6</button>
+<!-- Selected Range End -->
+<button class="size-10 rounded-full flex items-center justify-center text-sm font-bold text-white bg-primary shadow-lg shadow-primary/40 mx-auto relative z-10">7</button>
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-gray-400 hover:bg-white/5 mx-auto">8</button>
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-gray-400 hover:bg-white/5 mx-auto">9</button>
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-gray-400 hover:bg-white/5 mx-auto">10</button>
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-gray-400 hover:bg-white/5 mx-auto">11</button>
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-gray-400 hover:bg-white/5 mx-auto">12</button>
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-gray-400 hover:bg-white/5 mx-auto">13</button>
+<button class="size-10 rounded-full flex items-center justify-center text-sm text-gray-400 hover:bg-white/5 mx-auto">14</button>
+</div>
+<div class="flex items-center justify-between text-sm px-2 pt-4 border-t border-white/10">
+<span class="text-gray-400">Pickup: <strong class="text-white">Oct 5, 10:00 AM</strong></span>
+<span class="text-gray-400">Dropoff: <strong class="text-white">Oct 7, 10:00 AM</strong></span>
+</div>
+</div>
+<!-- Pricing Graph Module -->
+<div class="glass-panel rounded-2xl p-6 flex flex-col h-full">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="text-base font-medium text-gray-400">Estimated Rate</h3>
+<div class="flex items-baseline gap-2">
+<span class="text-3xl font-bold text-white">$142</span>
+<span class="text-sm text-gray-500">/ day avg</span>
+</div>
+</div>
+<div class="flex flex-col items-end">
+<span class="inline-flex items-center rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-400 ring-1 ring-inset ring-green-500/20">
+<span class="material-symbols-outlined text-[14px] mr-1">trending_down</span>
+                                    Best Value
+                                </span>
+</div>
+</div>
+<!-- Graph Container -->
+<div class="relative h-40 w-full mt-auto">
+<!-- Graph Background Grid -->
+<div class="absolute inset-0 grid grid-cols-7 border-b border-white/5">
+<div class="border-r border-white/5 h-full"></div>
+<div class="border-r border-white/5 h-full"></div>
+<div class="border-r border-white/5 h-full"></div>
+<div class="border-r border-white/5 h-full"></div>
+<div class="border-r border-white/5 h-full"></div>
+<div class="border-r border-white/5 h-full"></div>
+</div>
+<!-- Graph Line SVG -->
+<svg class="absolute inset-0 w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 100 100">
+<defs>
+<lineargradient id="gradientPricing" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#f97415" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#f97415" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,80 C10,80 10,40 20,40 C30,40 30,70 40,70 C50,70 50,30 60,30 C70,30 70,80 80,80 C90,80 90,50 100,50 L100,100 L0,100 Z" fill="url(#gradientPricing)"></path>
+<path d="M0,80 C10,80 10,40 20,40 C30,40 30,70 40,70 C50,70 50,30 60,30 C70,30 70,80 80,80 C90,80 90,50 100,50" fill="none" stroke="#f97415" stroke-linecap="round" stroke-width="2"></path>
+<!-- Points of Interest -->
+<circle class="animate-pulse" cx="40" cy="70" fill="#f97415" r="3"></circle>
+<circle cx="60" cy="30" fill="#f97415" r="3"></circle>
+</svg>
+<!-- Tooltip/Indicator -->
+<div class="absolute left-[40%] top-[55%] -translate-x-1/2 bg-white text-black text-[10px] font-bold px-2 py-1 rounded shadow-lg transform translate-y-[-100%]">
+                                $120
+                            </div>
+</div>
+<!-- X-Axis Labels -->
+<div class="grid grid-cols-7 gap-1 text-center mt-2">
+<span class="text-[10px] font-medium text-gray-500">Mon</span>
+<span class="text-[10px] font-medium text-gray-500">Tue</span>
+<span class="text-[10px] font-medium text-gray-500">Wed</span>
+<span class="text-[10px] font-medium text-white font-bold">Thu</span>
+<span class="text-[10px] font-medium text-white font-bold">Fri</span>
+<span class="text-[10px] font-medium text-gray-500">Sat</span>
+<span class="text-[10px] font-medium text-gray-500">Sun</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Vehicle Selection -->
+<div class="lg:col-span-7 flex flex-col gap-6">
+<div class="flex items-center justify-between">
+<h2 class="text-2xl font-bold text-white">Available Vehicles</h2>
+<div class="flex gap-2 text-sm">
+<button class="px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition">All</button>
+<button class="px-4 py-2 rounded-full border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition">Electric</button>
+<button class="px-4 py-2 rounded-full border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition">Luxury</button>
+<button class="px-4 py-2 rounded-full border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition">SUV</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Car Card 1 -->
+<div class="glass-card rounded-2xl p-4 flex flex-col relative group">
+<div class="absolute top-4 right-4 z-10 flex flex-col items-end">
+<span class="text-2xl font-bold text-white">$199</span>
+<span class="text-xs text-gray-400">/ day</span>
+</div>
+<div class="absolute top-4 left-4 z-10">
+<span class="bg-primary text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Best Seller</span>
+</div>
+<!-- Car Image Area -->
+<div class="h-48 w-full flex items-center justify-center relative my-4">
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.1)_0%,_transparent_70%)]"></div>
+<img alt="Tesla Model S dark silver side view" class="object-contain h-full w-full drop-shadow-2xl transition-transform duration-500 group-hover:scale-110 z-10" data-alt="Tesla Model S Plaid 3D render" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmxfzop30sRZx28jE_v8KfVmrN2CC9683YcIM4-ndEdZSFcCux_T3WRp6fCuZK6UVzDWuNeRmPq2L2LQ-E0eP8JJCucZ7GZQTvvFNLWJt3hzS9uUrGhq90V0Peo_yq1S6VnLpZv_20SlnuVaHOGjg5LKUuR8gDld_-QLtMT-dFgbmUCh15TR0oKlHxqT6PAe8_hej5IqgDb8-0ekXhvtLsf6KU51X7HOBdlvIFRNZ-yh4_gToCJsfo0AIdws2b4885fHVNzqB4opYn"/>
+</div>
+<!-- Details -->
+<div class="mt-auto">
+<h3 class="text-lg font-bold text-white mb-1">Model S Plaid</h3>
+<p class="text-xs text-gray-400 mb-4">Electric • Automatic • 5 Seats</p>
+<div class="flex gap-2 mb-4">
+<div class="flex flex-col items-center bg-white/5 rounded p-2 flex-1 border border-white/5">
+<span class="material-symbols-outlined text-primary text-[18px] mb-1">speed</span>
+<span class="text-[10px] text-gray-400">1.99s</span>
+</div>
+<div class="flex flex-col items-center bg-white/5 rounded p-2 flex-1 border border-white/5">
+<span class="material-symbols-outlined text-primary text-[18px] mb-1">battery_charging_full</span>
+<span class="text-[10px] text-gray-400">396 mi</span>
+</div>
+<div class="flex flex-col items-center bg-white/5 rounded p-2 flex-1 border border-white/5">
+<span class="material-symbols-outlined text-primary text-[18px] mb-1">airline_seat_recline_normal</span>
+<span class="text-[10px] text-gray-400">Luxury</span>
+</div>
+</div>
+<button class="w-full py-3 rounded-xl bg-white text-black font-bold hover:bg-primary hover:text-white transition-colors flex items-center justify-center gap-2 group-hover:shadow-[0_0_20px_rgba(249,116,21,0.4)]">
+                                    Rent Now
+                                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Car Card 2 -->
+<div class="glass-card rounded-2xl p-4 flex flex-col relative group">
+<div class="absolute top-4 right-4 z-10 flex flex-col items-end">
+<span class="text-2xl font-bold text-white">$240</span>
+<span class="text-xs text-gray-400">/ day</span>
+</div>
+<!-- Car Image Area -->
+<div class="h-48 w-full flex items-center justify-center relative my-4">
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.1)_0%,_transparent_70%)]"></div>
+<img alt="Rivian R1T dark green front view" class="object-contain h-full w-full drop-shadow-2xl transition-transform duration-500 group-hover:scale-110 z-10" data-alt="Rivian R1S Adventure 3D render" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDACo6CAscxFq6q7HzUdQnlSkgZ1FU0KbyxdUG86eYPrbxmLlwoG3Kn62dVawVxqToJEqHPZXK-OwLdhTZkrX2KVxIVu0RYqaOXMeQpouOHLVNBX5QelEYVvK20KHCqQrR38oeYh21ZNzF7EB34fnf0RtwxiFHGO3fGf2u-Yre135_gFGakDGsze7bnFwvVdN2qN09Dc6BTsyr3YiFiIr6GV5S8Ki_KL5RTxyIDSBFr_gHfz4s-aGGAIWBGzcj5jWHfeW6y3jCBwU29"/>
+</div>
+<!-- Details -->
+<div class="mt-auto">
+<h3 class="text-lg font-bold text-white mb-1">Rivian R1S</h3>
+<p class="text-xs text-gray-400 mb-4">Electric • AWD • 7 Seats</p>
+<div class="flex gap-2 mb-4">
+<div class="flex flex-col items-center bg-white/5 rounded p-2 flex-1 border border-white/5">
+<span class="material-symbols-outlined text-primary text-[18px] mb-1">terrain</span>
+<span class="text-[10px] text-gray-400">AWD</span>
+</div>
+<div class="flex flex-col items-center bg-white/5 rounded p-2 flex-1 border border-white/5">
+<span class="material-symbols-outlined text-primary text-[18px] mb-1">battery_charging_full</span>
+<span class="text-[10px] text-gray-400">316 mi</span>
+</div>
+<div class="flex flex-col items-center bg-white/5 rounded p-2 flex-1 border border-white/5">
+<span class="material-symbols-outlined text-primary text-[18px] mb-1">luggage</span>
+<span class="text-[10px] text-gray-400">Large</span>
+</div>
+</div>
+<button class="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-primary transition-colors flex items-center justify-center gap-2 border border-white/10 hover:border-transparent">
+                                    Rent Now
+                                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Car Card 3 -->
+<div class="glass-card rounded-2xl p-4 flex flex-col relative group">
+<div class="absolute top-4 right-4 z-10 flex flex-col items-end">
+<span class="text-2xl font-bold text-white">$299</span>
+<span class="text-xs text-gray-400">/ day</span>
+</div>
+<div class="absolute top-4 left-4 z-10">
+<span class="bg-indigo-500 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Luxury</span>
+</div>
+<!-- Car Image Area -->
+<div class="h-48 w-full flex items-center justify-center relative my-4">
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.1)_0%,_transparent_70%)]"></div>
+<img alt="Porsche Taycan white side view" class="object-contain h-full w-full drop-shadow-2xl transition-transform duration-500 group-hover:scale-110 z-10" data-alt="Porsche Taycan 3D render" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBU4T1wVw78e1WH0E-CkYScRpUj3G0vZs9JDkQ0TsnEA-5duhYf3V-2PPbz3RKGMkD3k-7HfjJ7Wj_DtSAEKM8DsAqTLuvPkli_7eJm7CQnJtxQvKQ1MPiRTXM8_4SIcTJH076lp8Kd7xqrknBq16y3FvPpnrGjKnlvfJIEclEWBr8jeNWWtMcT2Sn_DEB2eoxQM2HVHAgBrCo7NJw8PRtE0R4GbCRsuDm3Y4eOo5R1suFtfn7OiMiTm6lIpmpi45Gpd9jMcAPyb9GU"/>
+</div>
+<!-- Details -->
+<div class="mt-auto">
+<h3 class="text-lg font-bold text-white mb-1">Porsche Taycan</h3>
+<p class="text-xs text-gray-400 mb-4">Electric • Sport • 4 Seats</p>
+<div class="flex gap-2 mb-4">
+<div class="flex flex-col items-center bg-white/5 rounded p-2 flex-1 border border-white/5">
+<span class="material-symbols-outlined text-primary text-[18px] mb-1">bolt</span>
+<span class="text-[10px] text-gray-400">Sport</span>
+</div>
+<div class="flex flex-col items-center bg-white/5 rounded p-2 flex-1 border border-white/5">
+<span class="material-symbols-outlined text-primary text-[18px] mb-1">battery_charging_full</span>
+<span class="text-[10px] text-gray-400">246 mi</span>
+</div>
+<div class="flex flex-col items-center bg-white/5 rounded p-2 flex-1 border border-white/5">
+<span class="material-symbols-outlined text-primary text-[18px] mb-1">workspace_premium</span>
+<span class="text-[10px] text-gray-400">Premium</span>
+</div>
+</div>
+<button class="w-full py-3 rounded-xl bg-white/10 text-white font-bold hover:bg-primary transition-colors flex items-center justify-center gap-2 border border-white/10 hover:border-transparent">
+                                    Rent Now
+                                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Car Card 4 (Promo) -->
+<div class="glass-card rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br from-primary/20 to-transparent border-primary/20">
+<div class="text-center z-10">
+<div class="bg-primary/20 rounded-full p-4 mb-4 inline-flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-4xl">key</span>
+</div>
+<h3 class="text-xl font-bold text-white mb-2">Weekend Special</h3>
+<p class="text-sm text-gray-300 mb-6">Get 15% off all luxury rentals this weekend.</p>
+<button class="px-6 py-2 rounded-lg bg-primary text-white font-bold hover:bg-orange-600 transition-colors">View Offers</button>
+</div>
+<div class="absolute -bottom-10 -right-10 w-40 h-40 bg-primary/20 rounded-full blur-3xl"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Features -->
+<div class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="glass-panel p-6 rounded-xl flex items-start gap-4">
+<div class="rounded-lg bg-blue-500/10 p-3 text-blue-400">
+<span class="material-symbols-outlined">verified_user</span>
+</div>
+<div>
+<h4 class="text-white font-bold mb-1">Comprehensive Insurance</h4>
+<p class="text-sm text-gray-400">Full coverage included with every rental for peace of mind.</p>
+</div>
+</div>
+<div class="glass-panel p-6 rounded-xl flex items-start gap-4">
+<div class="rounded-lg bg-purple-500/10 p-3 text-purple-400">
+<span class="material-symbols-outlined">schedule</span>
+</div>
+<div>
+<h4 class="text-white font-bold mb-1">Flexible Cancellation</h4>
+<p class="text-sm text-gray-400">Cancel for free up to 24 hours before your trip starts.</p>
+</div>
+</div>
+<div class="glass-panel p-6 rounded-xl flex items-start gap-4">
+<div class="rounded-lg bg-green-500/10 p-3 text-green-400">
+<span class="material-symbols-outlined">ev_station</span>
+</div>
+<div>
+<h4 class="text-white font-bold mb-1">Free Charging</h4>
+<p class="text-sm text-gray-400">Access our supercharger network for free during your rental.</p>
+</div>
+</div>
+</div>
+</main>
+<footer class="mt-12 border-t border-white/5 py-8 text-center text-sm text-gray-500">
+<p>© 2023 GoTo Mobility. All rights reserved.</p>
+</footer>
+</div>
+</body></html>

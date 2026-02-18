@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>GoTo Home - Live Map &amp; Services</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Theme Configuration -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f97415",
+                        "primary-dark": "#c25e12",
+                        "background-light": "#f8f7f5",
+                        "background-dark": "#0F172A",
+                        "surface-dark": "#1E293B",
+                        "glass-dark": "rgba(15, 23, 42, 0.7)",
+                        "glass-border": "rgba(255, 255, 255, 0.08)",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "sans": ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "2xl": "2rem",
+                        "full": "9999px"
+                    },
+                    boxShadow: {
+                        "neon": "0 0 10px rgba(249, 116, 21, 0.3), 0 0 20px rgba(249, 116, 21, 0.1)",
+                        "glass": "0 4px 30px rgba(0, 0, 0, 0.1)",
+                    },
+                    backdropBlur: {
+                        "xs": "2px",
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Custom Map Styles to simulate map interaction */
+        .map-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            background-color: #0F172A;
+        }
+
+        .map-bg {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.7) contrast(1.2) hue-rotate(200deg) saturate(0.4);
+            transition: transform 0.5s ease;
+        }
+
+        /* Pulsing dot animation for live vehicles */
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.33);
+                opacity: 0;
+            }
+
+            80%,
+            100% {
+                opacity: 0;
+            }
+        }
+
+        @keyframes pulse-dot {
+            0% {
+                transform: scale(0.8);
+            }
+
+            50% {
+                transform: scale(1);
+            }
+
+            100% {
+                transform: scale(0.8);
+            }
+        }
+
+        .live-marker {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+        }
+
+        .live-marker::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            display: block;
+            width: 300%;
+            height: 300%;
+            box-sizing: border-box;
+            margin-left: -100%;
+            margin-top: -100%;
+            border-radius: 50%;
+            background-color: rgba(249, 116, 21, 0.3);
+            animation: pulse-ring 2.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        .live-marker::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: #f97415;
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(249, 116, 21, 0.6);
+            animation: pulse-dot 2.5s cubic-bezier(0.455, 0.03, 0.515, 0.955) -.4s infinite;
+        }
+
+        /* Glassmorphism utilities */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-input {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Hide scrollbar for clean UI */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+</head>
+
+<body class="bg-background-dark text-white font-display overflow-hidden h-screen w-screen relative">
+    <!-- Map Background Layer -->
+    <div class="map-container">
+        <!-- Using a dark abstract map placeholder -->
+        <img alt="Stylized dark map view of a city grid at night" class="map-bg" data-location="New York City"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjqwNZZB3mE3nYGUNCVi2NS6BuG48-RvJ8Deue7QS2d1HD-iWrxqHOd2hjLJqe3VY8iugOdWymAGLtMlEEnw-KUtexBBSOPeGnZP5aDIToEqXdsxKSkBnPmS13W-foNbEeMg8bjxvgptFhrq_TAVzoUck-Uj2AkUqHMHsaYj4rqVLmmRA_1FbMdKJHx_D0LWJKucngdXd6mi7j6QYdwA59DLuzmRG5YLl605qnPUFTzaQOrG0xNy75rvE24iYhWGzzUMUGSuI8_TPV" />
+        <!-- Live Vehicle Markers (Simulated) -->
+        <div class="live-marker" style="top: 30%; left: 40%; transform: translate(-50%, -50%);"></div>
+        <div class="live-marker" style="top: 55%; left: 60%; transform: translate(-50%, -50%);"></div>
+        <div class="live-marker" style="top: 42%; left: 25%; transform: translate(-50%, -50%);"></div>
+        <div class="live-marker" style="top: 68%; left: 75%; transform: translate(-50%, -50%);"></div>
+        <!-- Route Line Visualization (SVG Overlay) -->
+        <svg class="absolute top-0 left-0 w-full h-full pointer-events-none opacity-40"
+            xmlns="http://www.w3.org/2000/svg">
+            <path d="M 400 300 Q 600 400 800 350 T 1200 500" fill="none" stroke="#f97415" stroke-dasharray="10,5"
+                stroke-width="3"></path>
+        </svg>
+    </div>
+    <!-- UI Overlay Layer -->
+    <div class="relative z-10 flex flex-col h-full w-full pointer-events-none">
+        <!-- Top Navigation Bar -->
+        <header
+            class="pointer-events-auto flex items-center justify-between px-6 py-4 md:px-10 lg:px-12 w-full max-w-[1920px] mx-auto">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center justify-center size-10 rounded-xl bg-primary shadow-neon">
+                    <span class="material-symbols-outlined text-white text-2xl">near_me</span>
+                </div>
+                <h1 class="text-white text-2xl font-bold tracking-tight">GoTo</h1>
+            </div>
+            <!-- Top Right Profile & Actions -->
+            <div class="flex gap-3">
+                <button
+                    class="glass-panel hover:bg-white/10 transition-colors flex items-center justify-center size-12 rounded-full text-white">
+                    <span class="material-symbols-outlined">notifications</span>
+                </button>
+                <button
+                    class="glass-panel hover:bg-white/10 transition-colors flex items-center justify-center size-12 rounded-full text-white">
+                    <span class="material-symbols-outlined">account_circle</span>
+                </button>
+            </div>
+        </header>
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col justify-between w-full max-w-[1920px] mx-auto px-6 pb-6 md:px-10 lg:px-12">
+            <!-- Floating Search Bar (Top Left/Center) -->
+            <div class="pointer-events-auto w-full max-w-md mt-4">
+                <div class="glass-panel rounded-2xl p-2 shadow-glass transition-all hover:border-primary/50 group">
+                    <div class="flex items-center h-14 px-2">
+                        <div
+                            class="flex items-center justify-center size-10 rounded-xl bg-surface-dark/50 text-primary mr-3">
+                            <span class="material-symbols-outlined">search</span>
+                        </div>
+                        <input
+                            class="bg-transparent border-none text-white placeholder-gray-400 focus:ring-0 text-lg w-full h-full"
+                            placeholder="Where to?" type="text" />
+                        <div class="border-l border-white/10 pl-3 flex items-center gap-2">
+                            <button class="p-2 rounded-lg hover:bg-white/10 text-gray-300 transition-colors">
+                                <span class="material-symbols-outlined">mic</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Quick Locations -->
+                <div class="flex gap-2 mt-3 overflow-x-auto pb-2">
+                    <button
+                        class="glass-panel pointer-events-auto px-4 py-2 rounded-full flex items-center gap-2 text-sm font-medium hover:bg-white/10 transition-colors">
+                        <span class="material-symbols-outlined text-primary text-base">home</span> Home
+                    </button>
+                    <button
+                        class="glass-panel pointer-events-auto px-4 py-2 rounded-full flex items-center gap-2 text-sm font-medium hover:bg-white/10 transition-colors">
+                        <span class="material-symbols-outlined text-primary text-base">work</span> Work
+                    </button>
+                    <button
+                        class="glass-panel pointer-events-auto px-4 py-2 rounded-full flex items-center gap-2 text-sm font-medium hover:bg-white/10 transition-colors">
+                        <span class="material-symbols-outlined text-primary text-base">favorite</span> Gym
+                    </button>
+                </div>
+            </div>
+            <!-- Right Side Controls (Zoom/Compass) -->
+            <div
+                class="pointer-events-auto absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 md:right-10 lg:right-12">
+                <div class="glass-panel rounded-xl flex flex-col overflow-hidden shadow-glass">
+                    <button
+                        class="p-3 hover:bg-white/10 text-white border-b border-white/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined">add</span>
+                    </button>
+                    <button class="p-3 hover:bg-white/10 text-white flex items-center justify-center">
+                        <span class="material-symbols-outlined">remove</span>
+                    </button>
+                </div>
+                <button
+                    class="glass-panel rounded-xl p-3 hover:bg-white/10 text-white shadow-glass flex items-center justify-center">
+                    <span class="material-symbols-outlined">navigation</span>
+                </button>
+            </div>
+            <!-- Bottom Floating Dock -->
+            <div class="pointer-events-auto mt-auto flex flex-col md:flex-row items-end md:items-stretch gap-4 w-full">
+                <!-- Active Trip/Promo Card -->
+                <div
+                    class="glass-panel rounded-2xl p-5 w-full md:w-80 shadow-glass animate-in slide-in-from-bottom-10 fade-in duration-500 mb-4 md:mb-0">
+                    <div class="flex items-start justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary">cloud</span>
+                            <span class="text-sm font-semibold text-gray-300">Weather Update</span>
+                        </div>
+                        <button class="text-gray-400 hover:text-white"><span
+                                class="material-symbols-outlined text-sm">close</span></button>
+                    </div>
+                    <h3 class="text-white text-lg font-bold leading-tight mb-1">Rainy weather predicted</h3>
+                    <p class="text-gray-400 text-sm mb-4">Fares may vary slightly due to high demand in your area.</p>
+                    <div class="flex gap-2">
+                        <div class="h-1 bg-white/10 rounded-full flex-1 overflow-hidden">
+                            <div class="h-full w-1/3 bg-primary rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Services Tabs -->
+                <div
+                    class="glass-panel rounded-2xl p-2 flex-1 shadow-glass flex items-center justify-between md:justify-center gap-1 overflow-x-auto w-full">
+                    <!-- Ride Tab (Active) -->
+                    <button
+                        class="flex-1 min-w-[100px] group relative flex flex-col items-center justify-center py-4 px-2 rounded-xl transition-all hover:bg-white/5 bg-white/5">
+                        <!-- Active Indicator -->
+                        <div
+                            class="absolute top-2 right-2 size-2 bg-primary rounded-full shadow-[0_0_8px_rgba(249,116,21,0.8)]">
+                        </div>
+                        <span
+                            class="material-symbols-outlined text-primary mb-2 text-3xl group-hover:scale-110 transition-transform">local_taxi</span>
+                        <span class="text-white text-sm font-bold tracking-wide">RIDE</span>
+                        <span class="text-[10px] text-gray-400 mt-1">4 mins away</span>
+                    </button>
+                    <!-- Self Drive Tab -->
+                    <button
+                        class="flex-1 min-w-[100px] group relative flex flex-col items-center justify-center py-4 px-2 rounded-xl transition-all hover:bg-white/5 text-gray-400 hover:text-white">
+                        <span
+                            class="material-symbols-outlined mb-2 text-3xl group-hover:scale-110 transition-transform">directions_car</span>
+                        <span class="text-sm font-bold tracking-wide">SELF DRIVE</span>
+                        <span class="text-[10px] text-gray-500 mt-1 group-hover:text-gray-400">Find cars</span>
+                    </button>
+                    <!-- Parcel Tab -->
+                    <button
+                        class="flex-1 min-w-[100px] group relative flex flex-col items-center justify-center py-4 px-2 rounded-xl transition-all hover:bg-white/5 text-gray-400 hover:text-white">
+                        <span
+                            class="material-symbols-outlined mb-2 text-3xl group-hover:scale-110 transition-transform">package_2</span>
+                        <span class="text-sm font-bold tracking-wide">PARCEL</span>
+                        <span class="text-[10px] text-gray-500 mt-1 group-hover:text-gray-400">Send item</span>
+                    </button>
+                    <!-- Business Tab -->
+                    <button
+                        class="flex-1 min-w-[100px] group relative flex flex-col items-center justify-center py-4 px-2 rounded-xl transition-all hover:bg-white/5 text-gray-400 hover:text-white">
+                        <span
+                            class="material-symbols-outlined mb-2 text-3xl group-hover:scale-110 transition-transform">business_center</span>
+                        <span class="text-sm font-bold tracking-wide">BUSINESS</span>
+                        <span class="text-[10px] text-gray-500 mt-1 group-hover:text-gray-400">Manage trips</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+
+</html>

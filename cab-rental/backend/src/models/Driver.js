@@ -23,7 +23,7 @@ const driverSchema = new mongoose.Schema(
     },
 
     currentLocation: {
-      type: { type: String, enum: ["Point"], default: "Point" },
+      type: { type: String, enum: ["Point"] },
       coordinates: {
         type: [Number],
         index: "2dsphere"
@@ -32,6 +32,17 @@ const driverSchema = new mongoose.Schema(
 
     isOnDuty: { type: Boolean, default: false },
     isActive: { type: Boolean, default: false },
+    isApproved: { type: Boolean, default: false },
+    rejectionReason: String,
+
+    vehicleDetails: {
+      brand: String,
+      model: String,
+      licensePlate: String,
+      vehicleType: { type: String, enum: ['car', 'bike', 'scooter'] },
+      color: String,
+      year: Number,
+    },
 
     completedRides: { type: Number, default: 0 },
 
@@ -40,6 +51,7 @@ const driverSchema = new mongoose.Schema(
     earnings: {
       totalEarnings: { type: Number, default: 0 },
       pendingAmount: { type: Number, default: 0 },
+      availableBalance: { type: Number, default: 0 },
       withdrawnAmount: { type: Number, default: 0 }
     }
   },

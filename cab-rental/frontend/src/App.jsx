@@ -14,22 +14,21 @@ import DriverDashboard from './pages/dashboards/DriverDashboard';
 import AdminDashboard from './pages/dashboards/AdminDashboard';
 import RideHistoryPage from './pages/RideHistoryPage';
 import ReviewsPage from './pages/ReviewsPage';
+import VehicleManagement from './pages/admin/VehicleManagement';
 
 // Components
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
-import ConnectionTest from './components/ConnectionTest';
 
 function App() {
   const { token } = useAuthStore();
 
   return (
     <Router>
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-50">
+      <div className="min-h-screen flex flex-col bg-bg-dark text-white">
         <NavBar />
-        <ConnectionTest />
-        
+
         <main className="flex-1">
           <Routes>
             {/* Public Routes */}
@@ -47,7 +46,7 @@ function App() {
               }
             />
             <Route
-              path="/payment"
+              path="/payment/:bookingId"
               element={
                 <ProtectedRoute>
                   <PaymentPage />
@@ -64,6 +63,15 @@ function App() {
             />
             <Route
               path="/history"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <RideHistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            {/* Alias used by parcel booking */}
+            <Route
+              path="/ride-history"
               element={
                 <ProtectedRoute requiredRole="customer">
                   <RideHistoryPage />
@@ -104,6 +112,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/vehicles"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <VehicleManagement />
+                </ProtectedRoute>
+              }
+            />
 
             {/* 404 */}
             <Route path="*" element={<Navigate to="/" />} />
@@ -111,7 +127,21 @@ function App() {
         </main>
 
         <Footer />
-        <Toaster position="top-right" />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#111827',
+              color: '#f8fafc',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '12px',
+              fontSize: '14px',
+            },
+            success: {
+              iconTheme: { primary: '#f97415', secondary: '#111827' },
+            },
+          }}
+        />
       </div>
     </Router>
   );
