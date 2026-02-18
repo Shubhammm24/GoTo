@@ -99,8 +99,11 @@ const HomePage = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               {token ? (
                 <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                  <Link to="/booking" className="btn-primary inline-flex items-center gap-2">
-                    Book a Ride
+                  <Link
+                    to={activeService === 'parcel' ? '/parcel' : '/booking'}
+                    className="btn-primary inline-flex items-center gap-2"
+                  >
+                    {activeService === 'parcel' ? 'Send a Parcel' : 'Book a Ride'}
                     <ChevronRight size={18} />
                   </Link>
                 </motion.div>
@@ -133,8 +136,8 @@ const HomePage = () => {
                   key={svc.id}
                   onClick={() => setActiveService(svc.id)}
                   className={`flex-1 min-w-[100px] relative flex flex-col items-center justify-center py-4 px-3 rounded-xl transition-all duration-200 ${activeService === svc.id
-                      ? 'bg-primary/15'
-                      : 'hover:bg-white/5'
+                    ? 'bg-primary/15'
+                    : 'hover:bg-white/5'
                     }`}
                 >
                   {activeService === svc.id && (

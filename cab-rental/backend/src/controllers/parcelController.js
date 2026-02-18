@@ -77,6 +77,28 @@ exports.getMyParcels = async (req, res, next) => {
 };
 
 /**
+ * @desc   Get all parcels (Admin)
+ * @route  GET /api/parcels
+ * @access Protected (Admin)
+ */
+exports.getAllParcels = async (req, res, next) => {
+    try {
+        const parcels = await Parcel.find()
+            .populate("senderId", "name phone")
+            .populate("driverId", "name phone")
+            .sort({ createdAt: -1 });
+
+        res.json({
+            success: true,
+            count: parcels.length,
+            parcels
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * @desc   Get parcel by ID
  * @route  GET /api/parcels/:id
  * @access Protected

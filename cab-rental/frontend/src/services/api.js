@@ -74,6 +74,7 @@ export const driversAPI = {
 // ─── Parcels ─────────────────────────────────────────────────
 export const parcelsAPI = {
   create: (data) => api.post('/parcels', data),
+  getAll: () => api.get('/parcels'), // admin
   getMyParcels: () => api.get('/parcels/my-parcels'),
   getById: (id) => api.get(`/parcels/${id}`),
   assignDriver: (id, driverId) => api.post(`/parcels/${id}/assign-driver`, { driverId }),

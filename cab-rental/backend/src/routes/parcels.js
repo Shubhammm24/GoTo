@@ -9,6 +9,13 @@ router.post(
     parcelController.createParcel
 );
 
+// Get all parcels (admin)
+router.get(
+    "/",
+    auth(["admin"]),
+    parcelController.getAllParcels
+);
+
 // Get user's parcels
 router.get(
     "/user/me",

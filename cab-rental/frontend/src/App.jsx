@@ -14,6 +14,7 @@ import DriverDashboard from './pages/dashboards/DriverDashboard';
 import AdminDashboard from './pages/dashboards/AdminDashboard';
 import RideHistoryPage from './pages/RideHistoryPage';
 import ReviewsPage from './pages/ReviewsPage';
+import ParcelBookingPage from './pages/ParcelBookingPage';
 import VehicleManagement from './pages/admin/VehicleManagement';
 
 // Components
@@ -42,6 +43,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="customer">
                   <BookingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/parcel"
+              element={
+                <ProtectedRoute requiredRole="customer">
+                  <ParcelBookingPage />
                 </ProtectedRoute>
               }
             />
