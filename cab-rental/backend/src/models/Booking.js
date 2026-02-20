@@ -37,12 +37,14 @@ const bookingSchema = new mongoose.Schema(
 
     rentalType: {
       type: String,
-      enum: ["self-drive", "driver-operated"]
+      enum: ["self-drive", "driver-operated"],
+      required: true
     },
 
     vehicleType: {
       type: String,
-      enum: ["car", "bike", "scooter"]
+      enum: ["car", "bike", "scooter"],
+      required: true
     },
 
     estimatedDistance: Number,
@@ -107,5 +109,10 @@ const bookingSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Database indexes for query performance
+bookingSchema.index({ customerId: 1, status: 1 });
+bookingSchema.index({ driverId: 1 });
+bookingSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Booking", bookingSchema);

@@ -8,6 +8,12 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/index';
 import { driversAPI } from '../../services/api';
+import {
+  connectSocket, disconnectSocket,
+  onRideIncoming, offRideIncoming,
+  emitRideAccept, emitRideReject,
+  onRideConfirmed, onRideAlreadyTaken, offDriverRideEvents
+} from '../../services/socket';
 import toast from 'react-hot-toast';
 
 /* ─── Ride Request Popup with countdown timer ─────────────────── */
@@ -398,6 +404,71 @@ export default function DriverDashboard() {
     return () => clearInterval(pollRef.current);
   }, [isOnDuty, pollPending]);
 
+  /* ── Socket.IO: real-time ride notifications ─────────────── */
+  useEffect(() => {
+    if (!isOnDuty) return;
+
+    const token = localStorage.getItem('authToken');
+    if (token) connectSocket(token, user);
+
+    // Listen for incoming ride requests via Socket.IO
+    onRideIncoming((rideInfo) => {
+      console.log('[Socket] ride:incoming', rideInfo);
+      // Add to pending if not already there
+      setPending(prev => {
+        const exists = prev.some(r => (r._id || r.bookingId) === rideInfo.bookingId);
+        if (exists) return prev;
+        // Adapt shape to match what RideRequestPopup expects
+        const adapted = {
+          _id: rideInfo.bookingId,
+          pickupLocation: rideInfo.pickupLocation,
+          dropoffLocation: rideInfo.dropoffLocation,
+          vehicleType: rideInfo.vehicleType,
+          totalAmount: rideInfo.totalAmount,
+          estimatedDistance: rideInfo.estimatedDistance,
+          estimatedDuration: rideInfo.estimatedDuration,
+          estimatedEarnings: rideInfo.totalAmount,
+          customerName: rideInfo.customerName,
+          customerId: { name: rideInfo.customerName },
+          _fromSocket: true,
+        };
+        return [adapted, ...prev];
+      });
+      // Auto-show popup if none active
+      setActive(prev => {
+        if (prev) return prev;
+        return {
+          _id: rideInfo.bookingId,
+          pickupLocation: rideInfo.pickupLocation,
+          dropoffLocation: rideInfo.dropoffLocation,
+          vehicleType: rideInfo.vehicleType,
+          totalAmount: rideInfo.totalAmount,
+          estimatedDistance: rideInfo.estimatedDistance,
+          estimatedEarnings: rideInfo.totalAmount,
+          customerName: rideInfo.customerName,
+          customerId: { name: rideInfo.customerName },
+        };
+      });
+    });
+
+    onRideConfirmed((data) => {
+      toast.success('🎉 ' + (data.message || 'You got the ride!'));
+      setActive(null);
+      loadData(); // refresh assigned rides
+    });
+
+    onRideAlreadyTaken((data) => {
+      toast('Ride already taken by another driver', { icon: '⚡' });
+      setPending(prev => prev.filter(r => r._id !== data.bookingId));
+      setActive(prev => (prev?._id === data.bookingId ? null : prev));
+    });
+
+    return () => {
+      offRideIncoming();
+      offDriverRideEvents();
+    };
+  }, [isOnDuty, user]);
+
   /* ── Share location when going on duty ─────────────────────── */
   const shareLocation = () => {
     if (!navigator.geolocation) return;
@@ -438,7 +509,10 @@ export default function DriverDashboard() {
   const handleAccept = async (rideId) => {
     setAccepting(true);
     try {
-      await driversAPI.acceptRide(rideId);
+      // Emit via Socket.IO for real-time (first-come-first-serve)
+      emitRideAccept(rideId);
+      // Also call API as a fallback / for persistence
+      try { await driversAPI.acceptRide(rideId); } catch { /* socket handles it */ }
       toast.success('🎉 Ride accepted! Head to pickup location.');
       setActive(null);
       setPending(p => p.filter(r => r._id !== rideId));
@@ -453,6 +527,7 @@ export default function DriverDashboard() {
   /* ── Decline ride ──────────────────────────────────────────── */
   const handleDecline = async (rideId, reason) => {
     try {
+      emitRideReject(rideId);
       await driversAPI.rejectRide(rideId, reason);
     } catch { }
     setActive(null);

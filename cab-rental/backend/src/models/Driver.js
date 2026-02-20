@@ -9,8 +9,8 @@ const driverSchema = new mongoose.Schema(
       unique: true
     },
 
-    licenseNumber: String,
-    licenseExpiry: Date,
+    licenseNumber: { type: String, required: true },
+    licenseExpiry: { type: Date, required: true },
     licenseDoc: String,
 
     backgroundCheck: { type: Boolean, default: false },

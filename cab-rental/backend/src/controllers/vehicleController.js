@@ -1,5 +1,6 @@
 // Vehicle controller
 const Vehicle = require("../models/Vehicle");
+const Driver = require("../models/Driver");
 
 // Get all vehicles (admin)
 exports.getAllVehicles = async (req, res, next) => {
@@ -23,10 +24,6 @@ exports.searchVehicles = async (req, res, next) => {
   try {
     const { lat, lng, vehicleType, rentalType, maxDistance = 10000 } = req.query;
 
-    if (!lat || !lng) {
-      return res.status(400).json({ message: "Location coordinates required" });
-    }
-
     const query = {
       isAvailable: true,
       isActive: true
@@ -43,21 +40,37 @@ exports.searchVehicles = async (req, res, next) => {
       ];
     }
 
-    // Find vehicles near location
-    const vehicles = await Vehicle.find({
-      ...query,
-      location: {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [parseFloat(lng), parseFloat(lat)]
-          },
-          $maxDistance: parseInt(maxDistance)
-        }
+    let vehicles = [];
+
+    // Try geo query first if coordinates provided
+    if (lat && lng) {
+      try {
+        vehicles = await Vehicle.find({
+          ...query,
+          location: {
+            $near: {
+              $geometry: {
+                type: "Point",
+                coordinates: [parseFloat(lng), parseFloat(lat)]
+              },
+              $maxDistance: parseInt(maxDistance)
+            }
+          }
+        })
+          .populate('ownerId', 'name phone rating')
+          .limit(20);
+      } catch (geoErr) {
+        // Geo query may fail if no 2dsphere index documents exist
+        vehicles = [];
       }
-    })
-      .populate('ownerId', 'name phone rating')
-      .limit(20);
+    }
+
+    // Fallback: if geo query returned nothing, do a plain query
+    if (vehicles.length === 0) {
+      vehicles = await Vehicle.find(query)
+        .populate('ownerId', 'name phone rating')
+        .limit(20);
+    }
 
     res.json({
       message: "Vehicles found",
@@ -185,33 +198,48 @@ exports.getNearbyDrivers = async (req, res, next) => {
   try {
     const { lat, lng, vehicleType, maxDistance = 5000 } = req.query;
 
-    if (!lat || !lng) {
-      return res.status(400).json({ message: "Location coordinates required" });
-    }
-
     const query = {
       isOnDuty: true,
-      isActive: true
+      isActive: true,
+      isApproved: true
     };
 
     if (vehicleType) {
-      query.vehicleType = vehicleType;
+      query["vehicleDetails.vehicleType"] = vehicleType;
     }
 
-    const drivers = await Driver.find({
-      ...query,
-      currentLocation: {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [parseFloat(lng), parseFloat(lat)]
-          },
-          $maxDistance: parseInt(maxDistance)
-        }
+    let drivers = [];
+
+    // Try geo query first if coordinates provided
+    if (lat && lng) {
+      try {
+        drivers = await Driver.find({
+          ...query,
+          currentLocation: {
+            $near: {
+              $geometry: {
+                type: "Point",
+                coordinates: [parseFloat(lng), parseFloat(lat)]
+              },
+              $maxDistance: parseInt(maxDistance)
+            }
+          }
+        })
+          .populate('userId', 'name phone')
+          .select('userId vehicleDetails currentLocation rating completedRides isOnDuty')
+          .limit(10);
+      } catch {
+        drivers = [];
       }
-    })
-      .select('name phone vehicleType currentLocation rating totalRides')
-      .limit(10);
+    }
+
+    // Fallback: plain query without geo filter
+    if (drivers.length === 0) {
+      drivers = await Driver.find(query)
+        .populate('userId', 'name phone')
+        .select('userId vehicleDetails currentLocation rating completedRides isOnDuty')
+        .limit(10);
+    }
 
     res.json({
       message: "Nearby drivers found",

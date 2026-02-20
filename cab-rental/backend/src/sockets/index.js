@@ -7,8 +7,9 @@ const notificationSocket = require("./notificationSocket");
 module.exports = function initSockets(server) {
   const io = new Server(server, {
     cors: {
-      origin: "*",
-      methods: ["GET", "POST"]
+      origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+      methods: ["GET", "POST"],
+      credentials: true
     }
   });
 
@@ -27,4 +28,6 @@ module.exports = function initSockets(server) {
       console.log("🔌 Socket disconnected:", socket.user?.id);
     });
   });
+
+  return io;
 };

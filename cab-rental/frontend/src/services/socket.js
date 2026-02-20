@@ -95,9 +95,66 @@ export const onSOSTriggered = (callback) => {
 	socket?.on('sos-triggered', callback);
 };
 
+// ─── Ride Matching (Customer side) ─────────────────────────────
+export const getSocket = () => socket;
+
+export const emitRideRequest = (bookingId) => {
+	socket?.emit('ride:request', bookingId);
+};
+
+export const onRideSearching = (callback) => {
+	socket?.on('ride:searching', callback);
+};
+
+export const onRideAccepted = (callback) => {
+	socket?.on('ride:accepted', callback);
+};
+
+export const onRideNoDrivers = (callback) => {
+	socket?.on('ride:no_drivers', callback);
+};
+
+export const offRideEvents = () => {
+	socket?.off('ride:searching');
+	socket?.off('ride:accepted');
+	socket?.off('ride:no_drivers');
+};
+
+// ─── Ride Matching (Driver side) ─────────────────────────────
+export const onRideIncoming = (callback) => {
+	socket?.on('ride:incoming', callback);
+};
+
+export const offRideIncoming = () => {
+	socket?.off('ride:incoming');
+};
+
+export const emitRideAccept = (bookingId) => {
+	socket?.emit('ride:accept', { bookingId });
+};
+
+export const emitRideReject = (bookingId) => {
+	socket?.emit('ride:reject', { bookingId });
+};
+
+export const onRideConfirmed = (callback) => {
+	socket?.on('ride:confirmed', callback);
+};
+
+export const onRideAlreadyTaken = (callback) => {
+	socket?.on('ride:already_taken', callback);
+};
+
+export const offDriverRideEvents = () => {
+	socket?.off('ride:incoming');
+	socket?.off('ride:confirmed');
+	socket?.off('ride:already_taken');
+};
+
 export default {
 	connectSocket,
 	disconnectSocket,
+	getSocket,
 	subscribeToRideUpdates,
 	subscribeToDriverRequests,
 	joinRideChat,
@@ -113,4 +170,16 @@ export default {
 	onLocationUpdated,
 	emitSOS,
 	onSOSTriggered,
+	emitRideRequest,
+	onRideSearching,
+	onRideAccepted,
+	onRideNoDrivers,
+	offRideEvents,
+	onRideIncoming,
+	offRideIncoming,
+	emitRideAccept,
+	emitRideReject,
+	onRideConfirmed,
+	onRideAlreadyTaken,
+	offDriverRideEvents,
 };

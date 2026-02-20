@@ -27,7 +27,7 @@ const paymentSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["pending", "completed", "failed", "refunded"],
+      enum: ["pending", "completed", "failed", "refunded", "cod_pending"],
       default: "pending"
     },
 
@@ -43,5 +43,10 @@ const paymentSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Database indexes for query performance
+paymentSchema.index({ bookingId: 1 });
+paymentSchema.index({ userId: 1 });
+paymentSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Payment", paymentSchema);

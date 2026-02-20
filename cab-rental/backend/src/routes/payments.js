@@ -1,7 +1,16 @@
 // Payment routes
-const router = require("express").Router();
+const express = require("express");
+const router = express.Router();
 const auth = require("../middleware/auth");
 const paymentController = require("../controllers/paymentController");
+
+// Razorpay webhook (no auth, needs raw body for signature verification)
+// IMPORTANT: This must be BEFORE any JSON body parser middleware
+router.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  paymentController.handleWebhook
+);
 
 // Create Razorpay order
 router.post(
@@ -15,6 +24,13 @@ router.post(
   "/verify",
   auth(["customer"]),
   paymentController.verifyPayment
+);
+
+// Cash on Delivery
+router.post(
+  "/cod",
+  auth(["customer"]),
+  paymentController.codPayment
 );
 
 // Get payment by booking ID
@@ -31,20 +47,14 @@ router.get(
   paymentController.getUserPayments
 );
 
-// Razorpay webhook (no auth)
-router.post(
-  "/webhook",
-  paymentController.handleWebhook
-);
-
-// Create payment (old endpoint - kept for compatibility)
+// Create payment (legacy endpoint)
 router.post(
   "/",
   auth(["customer"]),
   paymentController.createPayment
 );
 
-// Update payment status (webhook/admin)
+// Update payment status (admin)
 router.patch(
   "/:id/status",
   auth(["admin"]),

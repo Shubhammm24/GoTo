@@ -1,13 +1,25 @@
 // Payment controller with Razorpay integration
 const Payment = require("../models/Payment");
+const Booking = require("../models/Booking");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+// Check if Razorpay keys are real (not placeholders)
+const hasRealRazorpayKeys =
+  process.env.RAZORPAY_KEY_ID &&
+  process.env.RAZORPAY_KEY_SECRET &&
+  !process.env.RAZORPAY_KEY_ID.includes("xxx") &&
+  !process.env.RAZORPAY_KEY_SECRET.includes("xxx") &&
+  process.env.RAZORPAY_KEY_ID.startsWith("rzp_");
+
+// Initialize Razorpay only if keys are real
+let razorpay = null;
+if (hasRealRazorpayKeys) {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+  });
+}
 
 /**
  * Create Razorpay order
@@ -21,7 +33,33 @@ exports.createPayment = async (req, res, next) => {
       return res.status(400).json({ message: "Missing required payment fields" });
     }
 
-    // Create Razorpay order
+    // ── DEV MODE: Razorpay keys not configured ──────────────
+    if (!razorpay) {
+      const mockOrderId = `mock_order_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+      const payment = await Payment.create({
+        bookingId,
+        userId: req.user.id,
+        amount,
+        currency,
+        razorpayOrderId: mockOrderId,
+        status: "completed" // Auto-complete in dev mode
+      });
+
+      // Also update booking status to confirmed
+      await Booking.findByIdAndUpdate(bookingId, { status: "confirmed" });
+
+      return res.status(201).json({
+        message: "Payment completed (dev mode — Razorpay keys not configured)",
+        orderId: mockOrderId,
+        amount: Math.round(amount * 100),
+        currency,
+        payment,
+        devMode: true
+      });
+    }
+
+    // ── PRODUCTION: Real Razorpay flow ──────────────────────
     const options = {
       amount: Math.round(amount * 100), // amount in paise
       currency,
@@ -53,6 +91,42 @@ exports.createPayment = async (req, res, next) => {
     });
   } catch (error) {
     console.error("CREATE PAYMENT ERROR:", error);
+    next(error);
+  }
+};
+
+/**
+ * Cash on Delivery payment
+ * @route POST /api/payments/cod
+ */
+exports.codPayment = async (req, res, next) => {
+  try {
+    const { bookingId, amount, currency = "INR" } = req.body;
+
+    if (!bookingId || !amount) {
+      return res.status(400).json({ message: "Missing required payment fields" });
+    }
+
+    const payment = await Payment.create({
+      bookingId,
+      userId: req.user.id,
+      amount,
+      currency,
+      razorpayOrderId: `cod_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      paymentMethod: "cod",
+      status: "cod_pending"
+    });
+
+    // Confirm the booking
+    await Booking.findByIdAndUpdate(bookingId, { status: "confirmed" });
+
+    res.status(201).json({
+      message: "Booking confirmed with Cash on Delivery",
+      payment,
+      cod: true
+    });
+  } catch (error) {
+    console.error("COD PAYMENT ERROR:", error);
     next(error);
   }
 };
@@ -148,13 +222,22 @@ exports.getPaymentByBooking = async (req, res, next) => {
  */
 exports.getUserPayments = async (req, res, next) => {
   try {
-    const payments = await Payment.find({ userId: req.user.id })
+    const { page = 1, limit = 20 } = req.query;
+    const query = { userId: req.user.id };
+
+    const payments = await Payment.find(query)
       .populate("bookingId")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await Payment.countDocuments(query);
 
     res.json({
       success: true,
-      count: payments.length,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      total,
       payments
     });
   } catch (error) {
@@ -172,9 +255,10 @@ exports.handleWebhook = async (req, res) => {
     const signature = req.headers["x-razorpay-signature"];
 
     // Verify webhook signature
+    const rawBody = Buffer.isBuffer(req.body) ? req.body : JSON.stringify(req.body);
     const expectedSignature = crypto
       .createHmac("sha256", secret)
-      .update(JSON.stringify(req.body))
+      .update(rawBody)
       .digest("hex");
 
     if (signature === expectedSignature) {

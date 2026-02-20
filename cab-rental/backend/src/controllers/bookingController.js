@@ -31,11 +31,24 @@ exports.createBooking = async (req, res, next) => {
       return res.status(400).json({ message: "Vehicle selection required for self-drive" });
     }
 
+    // For self-drive: atomically check and reserve vehicle to prevent race conditions
     let vehicle = null;
     if (vehicleId) {
-      vehicle = await Vehicle.findById(vehicleId);
-      if (!vehicle || !vehicle.isAvailable) {
-        return res.status(400).json({ message: "Selected vehicle is not available" });
+      if (rentalType === 'self-drive') {
+        // Atomic check-and-update to prevent double-booking
+        vehicle = await Vehicle.findOneAndUpdate(
+          { _id: vehicleId, isAvailable: true },
+          { isAvailable: false },
+          { new: true }
+        );
+        if (!vehicle) {
+          return res.status(400).json({ message: "Selected vehicle is not available" });
+        }
+      } else {
+        vehicle = await Vehicle.findById(vehicleId);
+        if (!vehicle || !vehicle.isAvailable) {
+          return res.status(400).json({ message: "Selected vehicle is not available" });
+        }
       }
     }
 
@@ -49,15 +62,9 @@ exports.createBooking = async (req, res, next) => {
       estimatedDistance: estimatedDistance || 0,
       estimatedDuration: estimatedDuration || 0,
       totalAmount: totalAmount || 0,
-      status: rentalType === 'self-drive' ? 'confirmed' : 'pending',
+      status: rentalType === 'self-drive' ? 'confirmed' : 'requested',
       paymentStatus: 'pending'
     });
-
-    // If self-drive, mark vehicle as unavailable
-    if (rentalType === 'self-drive' && vehicle) {
-      vehicle.isAvailable = false;
-      await vehicle.save();
-    }
 
     res.status(201).json({
       message: "Booking created successfully",
@@ -110,14 +117,31 @@ exports.assignDriver = async (req, res, next) => {
 
 exports.completeBooking = async (req, res, next) => {
   try {
-    const booking = await Booking.findByIdAndUpdate(
-      req.params.id,
-      { status: "completed", paymentStatus: "completed", dropoffTime: new Date() },
-      { new: true }
-    );
+    const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Authorization: verify the requesting driver is the assigned driver
+    const driver = await Driver.findOne({ userId: req.user.id });
+    if (!driver || !booking.driverId || booking.driverId.toString() !== driver._id.toString()) {
+      return res.status(403).json({ message: "Not authorized to complete this booking" });
+    }
+
+    if (booking.status !== "in_progress") {
+      return res.status(400).json({ message: "Booking must be in_progress to complete" });
+    }
+
+    booking.status = "completed";
+    booking.paymentStatus = "completed";
+    booking.dropoffTime = new Date();
+    booking.actualEndTime = new Date();
+    await booking.save();
+
+    // If self-drive, release the vehicle
+    if (booking.rentalType === 'self-drive' && booking.vehicleId) {
+      await Vehicle.findByIdAndUpdate(booking.vehicleId, { isAvailable: true });
     }
 
     res.json({
@@ -136,15 +160,25 @@ exports.completeBooking = async (req, res, next) => {
  */
 exports.getBookings = async (req, res, next) => {
   try {
-    const bookings = await Booking.find()
+    const { page = 1, limit = 20, status } = req.query;
+    const query = {};
+    if (status) query.status = status;
+
+    const bookings = await Booking.find(query)
       .populate("customerId", "name email phone")
       .populate("vehicleId", "vehicleType brand model licensePlate")
       .populate("driverId")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await Booking.countDocuments(query);
 
     res.json({
       success: true,
-      count: bookings.length,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      total,
       bookings
     });
   } catch (error) {
@@ -189,14 +223,24 @@ exports.getBookingById = async (req, res, next) => {
  */
 exports.getUserBookings = async (req, res, next) => {
   try {
-    const bookings = await Booking.find({ customerId: req.user.id })
+    const { page = 1, limit = 20, status } = req.query;
+    const query = { customerId: req.user.id };
+    if (status) query.status = status;
+
+    const bookings = await Booking.find(query)
       .populate("vehicleId", "vehicleType brand model licensePlate")
       .populate("driverId")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await Booking.countDocuments(query);
 
     res.json({
       success: true,
-      count: bookings.length,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / parseInt(limit)),
+      total,
       bookings
     });
   } catch (error) {

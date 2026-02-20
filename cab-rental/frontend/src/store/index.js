@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import api from '../services/api';
 
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
   user: JSON.parse(localStorage.getItem('user')) || null,
   token: localStorage.getItem('authToken') || null,
+  refreshToken: localStorage.getItem('refreshToken') || null,
   isLoading: false,
   error: null,
 
@@ -24,12 +25,13 @@ export const useAuthStore = create((set) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { token, user } = response.data;
-      
+      const { token, refreshToken, user } = response.data;
+
       localStorage.setItem('authToken', token);
+      localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
-      
-      set({ token, user, isLoading: false });
+
+      set({ token, refreshToken, user, isLoading: false });
       return response.data;
     } catch (error) {
       const message = error.response?.data?.message || 'Login failed';
@@ -38,10 +40,50 @@ export const useAuthStore = create((set) => ({
     }
   },
 
-  logout: () => {
+  logout: async () => {
+    const { refreshToken } = get();
+    try {
+      await api.post('/auth/logout', { refreshToken });
+    } catch (e) {
+      // Best-effort server logout
+    }
     localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-    set({ user: null, token: null });
+    set({ user: null, token: null, refreshToken: null });
+  },
+
+  // Check if the current access token is expired
+  isTokenExpired: () => {
+    const { token } = get();
+    if (!token) return true;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  },
+
+  // Refresh the access token using the refresh token
+  refreshAccessToken: async () => {
+    const { refreshToken } = get();
+    if (!refreshToken) throw new Error('No refresh token');
+
+    try {
+      const response = await api.post('/auth/refresh-token', { refreshToken });
+      const { token: newToken, refreshToken: newRefreshToken } = response.data;
+
+      localStorage.setItem('authToken', newToken);
+      localStorage.setItem('refreshToken', newRefreshToken);
+      set({ token: newToken, refreshToken: newRefreshToken });
+
+      return newToken;
+    } catch (error) {
+      // Refresh failed — force logout
+      get().logout();
+      throw error;
+    }
   },
 
   clearError: () => set({ error: null }),

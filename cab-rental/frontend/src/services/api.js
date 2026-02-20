@@ -15,15 +15,74 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+// Handle response errors — attempt token refresh on 401
+let isRefreshing = false;
+let failedQueue = [];
 
-// Handle response errors
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) reject(error);
+    else resolve(token);
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Never intercept auth endpoints — prevents infinite loops
+    if (originalRequest.url?.includes('/auth/')) {
+      return Promise.reject(error);
+    }
+
+    // Only attempt refresh on 401 and if not already retried
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      const refreshToken = localStorage.getItem('refreshToken');
+
+      // If no refresh token stored, just reject — don't force-logout
+      // (user may have logged in before refresh tokens were implemented)
+      if (!refreshToken) {
+        return Promise.reject(error);
+      }
+
+      // If another request is already refreshing, queue this one
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        }).catch(err => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const response = await axios.post(`${API_URL}/auth/refresh-token`, { refreshToken });
+        const { token: newToken, refreshToken: newRefreshToken } = response.data;
+
+        localStorage.setItem('authToken', newToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+
+        // Retry the original request + all queued requests
+        processQueue(null, newToken);
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        isRefreshing = false;
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        isRefreshing = false;
+
+        // Refresh failed — force logout only now
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
     }
     return Promise.reject(error);
   }
@@ -33,7 +92,8 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (userData) => api.post('/auth/register', userData),
-  // No /auth/logout route on backend — handled client-side only
+  logout: (refreshToken) => api.post('/auth/logout', { refreshToken }),
+  refreshToken: (refreshToken) => api.post('/auth/refresh-token', { refreshToken }),
 };
 
 // ─── Bookings ────────────────────────────────────────────────
@@ -92,6 +152,7 @@ export const parcelsAPI = {
 export const paymentsAPI = {
   createOrder: (data) => api.post('/payments/create-order', data),
   verifyPayment: (data) => api.post('/payments/verify', data),
+  cod: (data) => api.post('/payments/cod', data),
   getByBooking: (bookingId) => api.get(`/payments/booking/${bookingId}`),
   getHistory: () => api.get('/payments/user/me'),        // FIX: was /payments/history
 };
@@ -129,6 +190,7 @@ export const chatAPI = {
 export const vehiclesAPI = {
   search: (params) => api.get('/vehicles/search', { params }),
   getById: (id) => api.get(`/vehicles/${id}`),
+  getNearbyDrivers: (params) => api.get('/vehicles/nearby-drivers', { params }),
   getAll: () => api.get('/vehicles'),                         // admin
   create: (data) => api.post('/vehicles', data),                  // admin
   update: (id, data) => api.put(`/vehicles/${id}`, data),           // admin

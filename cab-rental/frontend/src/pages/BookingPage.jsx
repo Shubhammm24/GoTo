@@ -4,12 +4,17 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   MapPin, Navigation, Clock, IndianRupee, X, Loader2,
-  Crosshair, Package, Car, Bike, ChevronRight, CheckCircle2
+  Crosshair, Package, Car, Bike, ChevronRight, CheckCircle2, Star, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { calculateRidePrice, formatCurrency } from '../utils/pricing';
 import { vehiclesAPI, bookingsAPI, parcelsAPI } from '../services/api';
+import {
+  connectSocket,
+  emitRideRequest, onRideSearching, onRideAccepted, onRideNoDrivers, offRideEvents
+} from '../services/socket';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/index';
 import toast from 'react-hot-toast';
 
 /* ─── Leaflet Icon Fix ────────────────────────────────────── */
@@ -170,6 +175,7 @@ function haversine(a, b) {
 /* ─── Main Component ──────────────────────────────────────── */
 export default function BookingPage() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
 
   // Service tab
   const [tab, setTab] = useState('ride'); // 'ride' | 'parcel' | 'self-drive'
@@ -206,6 +212,18 @@ export default function BookingPage() {
 
   // Booking
   const [isBooking, setIsBooking] = useState(false);
+
+  // ─── Ride Matching State ─────────────────────────────────
+  const [findingDrivers, setFindingDrivers] = useState(false);
+  const [matchedDriver, setMatchedDriver] = useState(null);
+  const [noDrivers, setNoDrivers] = useState(false);
+  const [driversNotified, setDriversNotified] = useState(0);
+  const [matchBookingId, setMatchBookingId] = useState(null);
+  const findingTimeoutRef = useRef(null);
+
+  // ─── Live Nearby Drivers (for map markers) ────────────────
+  const [nearbyDrivers, setNearbyDrivers] = useState([]);
+  const driverPollRef = useRef(null);
 
   /* ── GPS: Use Current Location ─────────────────────────── */
   const useCurrentLocation = useCallback((field) => {
@@ -322,12 +340,107 @@ export default function BookingPage() {
         estimatedDuration: pricing.duration,
         totalAmount: pricing.total,
       });
-      toast.success('Booking created!');
-      navigate(`/payment/${res.data.booking._id}`);
+
+      const bookingId = res.data.booking._id;
+      setMatchBookingId(bookingId);
+      setFindingDrivers(true);
+      setMatchedDriver(null);
+      setNoDrivers(false);
+      setDriversNotified(0);
+
+      // Connect socket and request ride
+      const token = localStorage.getItem('authToken');
+      if (token) connectSocket(token, user);
+
+      // Small delay to ensure socket is connected
+      setTimeout(() => {
+        emitRideRequest(bookingId);
+      }, 500);
+
+      // Listen for events
+      onRideSearching((data) => {
+        if (data.bookingId === bookingId) {
+          setDriversNotified(data.driversNotified || 0);
+        }
+      });
+
+      onRideAccepted((data) => {
+        if (data.bookingId === bookingId) {
+          setMatchedDriver(data.driver);
+          clearTimeout(findingTimeoutRef.current);
+          toast.success('Driver found! 🎉');
+        }
+      });
+
+      onRideNoDrivers((data) => {
+        if (data.bookingId === bookingId) {
+          setNoDrivers(true);
+          setFindingDrivers(false);
+          clearTimeout(findingTimeoutRef.current);
+        }
+      });
+
+      // Frontend timeout safety (65s, slightly more than server 60s)
+      findingTimeoutRef.current = setTimeout(() => {
+        if (!matchedDriver) {
+          setNoDrivers(true);
+          setFindingDrivers(false);
+        }
+      }, 65000);
+
     } catch (e) {
       toast.error(e.response?.data?.message || 'Booking failed');
     } finally { setIsBooking(false); }
   };
+
+  /* ── Retry finding drivers ─────────────────────────────── */
+  const handleRetryFinding = () => {
+    if (!matchBookingId) return;
+    setFindingDrivers(true);
+    setNoDrivers(false);
+    setMatchedDriver(null);
+    setDriversNotified(0);
+    emitRideRequest(matchBookingId);
+    findingTimeoutRef.current = setTimeout(() => {
+      if (!matchedDriver) {
+        setNoDrivers(true);
+        setFindingDrivers(false);
+      }
+    }, 65000);
+  };
+
+  /* ── Cleanup socket listeners on unmount ────────────────── */
+  useEffect(() => {
+    return () => {
+      offRideEvents();
+      clearTimeout(findingTimeoutRef.current);
+      clearInterval(driverPollRef.current);
+    };
+  }, []);
+
+  /* ── Fetch nearby drivers whenever pickup is set ───────── */
+  useEffect(() => {
+    const fetchDrivers = async () => {
+      if (!pickup) { setNearbyDrivers([]); return; }
+      try {
+        const res = await vehiclesAPI.getNearbyDrivers({
+          lat: pickup.lat,
+          lng: pickup.lng,
+          vehicleType: tab === 'ride' ? vehicleType : undefined,
+        });
+        const drivers = res.data?.drivers || [];
+        setNearbyDrivers(drivers);
+      } catch { /* silent */ }
+    };
+
+    fetchDrivers();
+    // Poll every 10s while pickup is set
+    clearInterval(driverPollRef.current);
+    if (pickup) {
+      driverPollRef.current = setInterval(fetchDrivers, 10000);
+    }
+    return () => clearInterval(driverPollRef.current);
+  }, [pickup, vehicleType, tab]);
 
   /* ── Book Self-Drive ───────────────────────────────────── */
   const handleBookSelfDrive = async () => {
@@ -488,12 +601,6 @@ export default function BookingPage() {
                   placeholder={tab === 'parcel' ? 'Search delivery address...' : 'Search destination...'}
                 />
                 <div className="flex gap-2">
-                  <button onClick={() => useCurrentLocation('dropoff')}
-                    disabled={gpsLoading === 'dropoff'}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium border border-white/10 text-white/50 hover:text-primary hover:border-primary/30 transition-all disabled:opacity-50">
-                    {gpsLoading === 'dropoff' ? <Loader2 size={12} className="animate-spin" /> : <Crosshair size={12} />}
-                    Use my location
-                  </button>
                   <button onClick={() => setClickMode(clickMode === 'dropoff' ? null : 'dropoff')}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium border transition-all ${clickMode === 'dropoff'
                       ? 'bg-primary/20 border-primary/40 text-primary'
@@ -839,9 +946,196 @@ export default function BookingPage() {
             {routeLine && (
               <Polyline positions={routeLine} color="#f97415" weight={3} opacity={0.8} dashArray="10 6" />
             )}
+
+            {/* Live nearby driver markers */}
+            {nearbyDrivers.map((d) => {
+              const loc = d.currentLocation?.coordinates;
+              if (!loc || loc.length < 2) return null;
+              return (
+                <Marker key={d._id} position={[loc[1], loc[0]]} icon={driverIcon}>
+                  <Popup>
+                    <div style={{ fontSize: 12, lineHeight: 1.4 }}>
+                      <b>{d.userId?.name || 'Driver'}</b><br />
+                      <span style={{ textTransform: 'capitalize' }}>{d.vehicleDetails?.vehicleType || 'car'}</span>
+                      {d.vehicleDetails?.brand ? ` • ${d.vehicleDetails.brand} ${d.vehicleDetails.model || ''}` : ''}<br />
+                      ⭐ {d.rating?.toFixed(1) || '4.5'} • {d.completedRides || 0} rides
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
           </MapContainer>
         </div>
       </div>
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* FINDING DRIVERS OVERLAY                                   */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {(findingDrivers || matchedDriver || noDrivers) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            style={{ background: 'rgba(5,10,20,0.92)', backdropFilter: 'blur(20px)' }}>
+
+            {/* ── Searching state ─────────────────────────── */}
+            {findingDrivers && !matchedDriver && !noDrivers && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center max-w-sm w-full">
+
+                {/* Pulsing radar animation */}
+                <div className="relative w-32 h-32 mx-auto mb-6">
+                  {[0, 1, 2].map(i => (
+                    <motion.div
+                      key={i}
+                      className="absolute inset-0 rounded-full border-2 border-primary/30"
+                      initial={{ opacity: 0.6, scale: 0.5 }}
+                      animate={{ opacity: 0, scale: 1.5 }}
+                      transition={{ duration: 2, repeat: Infinity, delay: i * 0.6 }}
+                    />
+                  ))}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center">
+                      <Car size={28} className="text-primary" />
+                    </div>
+                  </div>
+                </div>
+
+                <h2 className="text-white text-2xl font-bold mb-2">Finding nearby drivers...</h2>
+                <p className="text-white/40 text-sm mb-2">
+                  Searching for drivers matching your ride
+                </p>
+                {driversNotified > 0 && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-primary text-sm font-semibold">
+                    📡 {driversNotified} driver{driversNotified > 1 ? 's' : ''} notified
+                  </motion.p>
+                )}
+
+                <button
+                  onClick={() => {
+                    setFindingDrivers(false);
+                    setNoDrivers(false);
+                    offRideEvents();
+                    clearTimeout(findingTimeoutRef.current);
+                  }}
+                  className="mt-6 px-6 py-2 rounded-xl border border-white/20 text-white/50 text-sm hover:text-white hover:border-white/40 transition-all">
+                  Cancel Search
+                </button>
+              </motion.div>
+            )}
+
+            {/* ── Driver matched state ────────────────────── */}
+            {matchedDriver && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                className="rounded-3xl p-6 border border-green-500/30 max-w-sm w-full"
+                style={{ background: 'rgba(17,24,39,0.95)', backdropFilter: 'blur(24px)' }}>
+
+                {/* Success icon */}
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: 'spring' }}
+                  className="w-16 h-16 rounded-full bg-green-500/15 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 size={28} className="text-green-400" />
+                </motion.div>
+
+                <h2 className="text-white text-xl font-bold text-center mb-1">Driver Found!</h2>
+                <p className="text-white/40 text-xs text-center mb-5">Your driver is on the way</p>
+
+                {/* Driver card */}
+                <div className="rounded-2xl p-4 bg-white/5 border border-white/10 mb-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary font-black text-lg">
+                      {matchedDriver.name?.charAt(0)?.toUpperCase() || '🚗'}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-bold">{matchedDriver.name || 'Driver'}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
+                          <Star size={10} className="text-yellow-400 fill-yellow-400" />
+                          <span className="text-white/50 text-xs">{matchedDriver.rating?.toFixed(1) || '4.5'}</span>
+                        </div>
+                        <span className="text-white/20">·</span>
+                        <span className="text-white/40 text-xs">{matchedDriver.completedRides || 0} rides</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Vehicle details */}
+                  {matchedDriver.vehicleDetails && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="p-2 rounded-xl bg-white/5 text-center">
+                        <p className="text-white/30 text-[10px]">Vehicle</p>
+                        <p className="text-white text-xs font-bold capitalize">{matchedDriver.vehicleDetails.vehicleType || '—'}</p>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white/5 text-center">
+                        <p className="text-white/30 text-[10px]">Model</p>
+                        <p className="text-white text-xs font-bold">{matchedDriver.vehicleDetails.brand || '—'} {matchedDriver.vehicleDetails.model || ''}</p>
+                      </div>
+                      <div className="p-2 rounded-xl bg-white/5 text-center">
+                        <p className="text-white/30 text-[10px]">Color</p>
+                        <p className="text-white text-xs font-bold">{matchedDriver.vehicleDetails.color || '—'}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    offRideEvents();
+                    navigate(`/payment/${matchBookingId}`);
+                  }}
+                  className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-base shadow-neon hover:bg-orange-500 transition-all flex items-center justify-center gap-2">
+                  <IndianRupee size={16} /> Proceed to Payment
+                </motion.button>
+              </motion.div>
+            )}
+
+            {/* ── No drivers found state ──────────────────── */}
+            {noDrivers && !matchedDriver && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center max-w-sm w-full">
+                <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
+                  <Car size={32} className="text-white/20" />
+                </div>
+                <h2 className="text-white text-xl font-bold mb-2">No Drivers Available</h2>
+                <p className="text-white/40 text-sm mb-6">No drivers accepted your ride request. Please try again or change your vehicle type.</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setNoDrivers(false);
+                      setFindingDrivers(false);
+                      setMatchBookingId(null);
+                      offRideEvents();
+                    }}
+                    className="flex-1 py-3 rounded-xl border border-white/20 text-white/60 text-sm font-bold hover:border-white/40 transition-all">
+                    Go Back
+                  </button>
+                  <button
+                    onClick={handleRetryFinding}
+                    className="flex-1 py-3 rounded-xl bg-primary text-white text-sm font-bold shadow-neon hover:bg-orange-500 transition-all">
+                    🔄 Try Again
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -32,6 +32,7 @@ export default function PaymentPage() {
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
   const [error, setError] = useState(null);
+  const [payMethod, setPayMethod] = useState('online'); // 'online' | 'cod'
 
   /* ── Fetch booking ─────────────────────────────────────────── */
   useEffect(() => {
@@ -42,22 +43,28 @@ export default function PaymentPage() {
       .finally(() => setLoading(false));
   }, [bookingId]);
 
-  /* ── Razorpay payment ──────────────────────────────────────── */
-  const handlePay = async () => {
+  /* ── Online / Razorpay payment ─────────────────────────────── */
+  const handlePayOnline = async () => {
     if (!booking) return;
     setPaying(true);
     try {
-      const loaded = await loadRazorpay();
-      if (!loaded) { toast.error('Payment gateway failed to load'); setPaying(false); return; }
-
-      // 1. Create order on backend
       const orderRes = await paymentsAPI.createOrder({
         bookingId: booking._id,
         amount: booking.totalAmount,
       });
+
+      // Dev mode — payment auto-completed by backend
+      if (orderRes.data.devMode) {
+        setPaid(true);
+        toast.success('Payment completed (dev mode) 🎉');
+        return;
+      }
+
+      const loaded = await loadRazorpay();
+      if (!loaded) { toast.error('Payment gateway failed to load'); setPaying(false); return; }
+
       const { orderId, amount, currency } = orderRes.data;
 
-      // 2. Open Razorpay checkout
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount,
@@ -65,13 +72,9 @@ export default function PaymentPage() {
         name: 'GoTo Cab Rental',
         description: `Booking #${booking._id?.slice(-6).toUpperCase()}`,
         order_id: orderId,
-        prefill: {
-          name: user?.name || '',
-          email: user?.email || '',
-        },
+        prefill: { name: user?.name || '', email: user?.email || '' },
         theme: { color: '#f97415' },
         handler: async (response) => {
-          // 3. Verify payment on backend
           try {
             await paymentsAPI.verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
@@ -84,9 +87,7 @@ export default function PaymentPage() {
             toast.error('Payment verification failed. Contact support.');
           }
         },
-        modal: {
-          ondismiss: () => { setPaying(false); },
-        },
+        modal: { ondismiss: () => { setPaying(false); } },
       };
 
       const rzp = new window.Razorpay(options);
@@ -101,6 +102,25 @@ export default function PaymentPage() {
     }
   };
 
+  /* ── COD payment ───────────────────────────────────────────── */
+  const handlePayCOD = async () => {
+    if (!booking) return;
+    setPaying(true);
+    try {
+      await paymentsAPI.cod({
+        bookingId: booking._id,
+        amount: booking.totalAmount,
+      });
+      setPaid(true);
+      toast.success('Booking confirmed — pay in cash! 🎉');
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to confirm COD booking');
+      setPaying(false);
+    }
+  };
+
+  const handlePay = () => payMethod === 'cod' ? handlePayCOD() : handlePayOnline();
+
   /* ── Success screen ────────────────────────────────────────── */
   if (paid) {
     return (
@@ -112,8 +132,14 @@ export default function PaymentPage() {
             className="w-20 h-20 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto mb-5">
             <CheckCircle size={36} className="text-green-400" />
           </motion.div>
-          <h1 className="text-white text-2xl font-bold mb-2">Payment Successful!</h1>
-          <p className="text-white/50 text-sm mb-6">Your booking is confirmed. Have a great ride!</p>
+          <h1 className="text-white text-2xl font-bold mb-2">
+            {payMethod === 'cod' ? 'Booking Confirmed!' : 'Payment Successful!'}
+          </h1>
+          <p className="text-white/50 text-sm mb-6">
+            {payMethod === 'cod'
+              ? 'Pay the driver in cash at pickup. Have a great ride!'
+              : 'Your booking is confirmed. Have a great ride!'}
+          </p>
           <div className="flex gap-3">
             <button onClick={() => navigate('/history')}
               className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 text-sm font-semibold hover:border-white/20 transition-all">
@@ -224,20 +250,56 @@ export default function PaymentPage() {
           </div>
         </div>
 
-        {/* Payment Method Info */}
+        {/* ── Payment Method Selection ────────────────────────── */}
         <div className="rounded-2xl p-4 border border-white/10"
           style={{ background: 'rgba(17,24,39,0.8)', backdropFilter: 'blur(20px)' }}>
-          <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-3">Payment via Razorpay</p>
-          <div className="grid grid-cols-3 gap-2">
-            {['💳 Card', '📱 UPI', '🏦 Net Banking'].map(m => (
-              <div key={m} className="bg-white/5 rounded-xl p-2 text-center">
-                <p className="text-white/60 text-xs">{m}</p>
+          <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-3">Choose Payment Method</p>
+
+          <div className="space-y-2">
+            {/* Online Payment Option */}
+            <button
+              onClick={() => setPayMethod('online')}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${payMethod === 'online'
+                  ? 'border-primary/50 bg-primary/10'
+                  : 'border-white/10 hover:border-white/20'
+                }`}>
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${payMethod === 'online' ? 'border-primary' : 'border-white/30'
+                }`}>
+                {payMethod === 'online' && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
               </div>
-            ))}
+              <div className="flex-1 text-left">
+                <p className={`text-sm font-semibold ${payMethod === 'online' ? 'text-white' : 'text-white/60'}`}>
+                  Pay Online
+                </p>
+                <p className="text-white/30 text-[10px]">Card · UPI · Net Banking via Razorpay</p>
+              </div>
+              <div className="flex gap-1.5">
+                <span className="text-xs">💳</span>
+                <span className="text-xs">📱</span>
+                <span className="text-xs">🏦</span>
+              </div>
+            </button>
+
+            {/* COD Option */}
+            <button
+              onClick={() => setPayMethod('cod')}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${payMethod === 'cod'
+                  ? 'border-green-500/50 bg-green-500/10'
+                  : 'border-white/10 hover:border-white/20'
+                }`}>
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${payMethod === 'cod' ? 'border-green-500' : 'border-white/30'
+                }`}>
+                {payMethod === 'cod' && <div className="w-2.5 h-2.5 rounded-full bg-green-500" />}
+              </div>
+              <div className="flex-1 text-left">
+                <p className={`text-sm font-semibold ${payMethod === 'cod' ? 'text-white' : 'text-white/60'}`}>
+                  Cash on Delivery
+                </p>
+                <p className="text-white/30 text-[10px]">Pay the driver in cash at pickup</p>
+              </div>
+              <span className="text-lg">💵</span>
+            </button>
           </div>
-          <p className="text-white/30 text-[10px] mt-3 text-center">
-            Secure payment powered by Razorpay. Your card details are never stored.
-          </p>
         </div>
 
         {/* Pay Button */}
@@ -245,9 +307,12 @@ export default function PaymentPage() {
           whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
           onClick={handlePay}
           disabled={paying}
-          className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-base flex items-center justify-center gap-2 shadow-neon disabled:opacity-60 transition-all">
+          className={`w-full py-4 rounded-2xl text-white font-bold text-base flex items-center justify-center gap-2 shadow-neon disabled:opacity-60 transition-all ${payMethod === 'cod' ? 'bg-green-600 hover:bg-green-700' : 'bg-primary'
+            }`}>
           {paying ? (
-            <><Loader2 size={18} className="animate-spin" /> Opening Payment...</>
+            <><Loader2 size={18} className="animate-spin" /> Processing...</>
+          ) : payMethod === 'cod' ? (
+            <>💵 Confirm — Pay ₹{booking.totalAmount?.toLocaleString('en-IN')} in Cash</>
           ) : (
             <><IndianRupee size={16} /> Pay ₹{booking.totalAmount?.toLocaleString('en-IN')}</>
           )}
