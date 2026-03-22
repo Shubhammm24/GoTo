@@ -8,14 +8,105 @@ export const useAuthStore = create((set, get) => ({
   isLoading: false,
   error: null,
 
+  // OTP verification state
+  pendingUserId: null,
+  isEmailVerified: false,
+  isPhoneVerified: false,
+  devOtps: null, // { emailOtp, phoneOtp } — only in development
+
   register: async (userData) => {
     set({ isLoading: true, error: null });
     try {
       const response = await api.post('/auth/register', userData);
-      set({ isLoading: false });
+      const { userId, dev } = response.data;
+      set({
+        isLoading: false,
+        pendingUserId: userId,
+        isEmailVerified: false,
+        isPhoneVerified: false,
+        devOtps: dev || null
+      });
       return response.data;
     } catch (error) {
       const message = error.response?.data?.message || 'Registration failed';
+      set({ isLoading: false, error: message });
+      throw error;
+    }
+  },
+
+  verifyOtp: async (code, type) => {
+    const { pendingUserId } = get();
+    if (!pendingUserId) throw new Error('No pending verification');
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.post('/auth/verify-otp', {
+        userId: pendingUserId,
+        code,
+        type
+      });
+      const { isEmailVerified, isPhoneVerified, isFullyVerified } = response.data;
+      set({
+        isLoading: false,
+        isEmailVerified,
+        isPhoneVerified,
+        pendingUserId: isFullyVerified ? null : pendingUserId
+      });
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || 'Verification failed';
+      set({ isLoading: false, error: message });
+      throw error;
+    }
+  },
+
+  resendOtp: async (type) => {
+    const { pendingUserId } = get();
+    if (!pendingUserId) throw new Error('No pending verification');
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.post('/auth/resend-otp', {
+        userId: pendingUserId,
+        type
+      });
+      set({ isLoading: false });
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to resend OTP';
+      set({ isLoading: false, error: message });
+      throw error;
+    }
+  },
+
+  setPendingUserId: (userId) => set({ pendingUserId: userId }),
+
+  forgotPassword: async (email) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.post('/auth/forgot-password', { email });
+      const { userId } = response.data;
+      set({ isLoading: false, pendingUserId: userId });
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || 'Request failed';
+      set({ isLoading: false, error: message });
+      throw error;
+    }
+  },
+
+  resetPassword: async (code, newPassword) => {
+    const { pendingUserId } = get();
+    if (!pendingUserId) throw new Error('No pending reset');
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.post('/auth/reset-password', {
+        userId: pendingUserId,
+        code,
+        newPassword
+      });
+      set({ isLoading: false, pendingUserId: null });
+      return response.data;
+    } catch (error) {
+      const message = error.response?.data?.message || 'Reset failed';
       set({ isLoading: false, error: message });
       throw error;
     }
@@ -34,8 +125,20 @@ export const useAuthStore = create((set, get) => ({
       set({ token, refreshToken, user, isLoading: false });
       return response.data;
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed';
-      set({ isLoading: false, error: message });
+      // Handle unverified account — redirect to verification
+      if (error.response?.status === 403 && error.response?.data?.pendingVerification) {
+        const data = error.response.data;
+        set({
+          isLoading: false,
+          pendingUserId: data.userId,
+          isEmailVerified: data.isEmailVerified,
+          isPhoneVerified: data.isPhoneVerified,
+          error: data.message
+        });
+      } else {
+        const message = error.response?.data?.message || 'Login failed';
+        set({ isLoading: false, error: message });
+      }
       throw error;
     }
   },
@@ -50,10 +153,9 @@ export const useAuthStore = create((set, get) => ({
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
-    set({ user: null, token: null, refreshToken: null });
+    set({ user: null, token: null, refreshToken: null, pendingUserId: null });
   },
 
-  // Check if the current access token is expired
   isTokenExpired: () => {
     const { token } = get();
     if (!token) return true;
@@ -65,7 +167,6 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  // Refresh the access token using the refresh token
   refreshAccessToken: async () => {
     const { refreshToken } = get();
     if (!refreshToken) throw new Error('No refresh token');
@@ -80,7 +181,6 @@ export const useAuthStore = create((set, get) => ({
 
       return newToken;
     } catch (error) {
-      // Refresh failed — force logout
       get().logout();
       throw error;
     }

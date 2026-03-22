@@ -13,6 +13,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 const HomePage = lazy(() => import('./pages/HomePage'));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/auth/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
 const BookingPage = lazy(() => import('./pages/BookingPage'));
 const PaymentPage = lazy(() => import('./pages/PaymentPage'));
 const TrackingPage = lazy(() => import('./pages/TrackingPage'));
@@ -47,6 +48,7 @@ function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={token ? <Navigate to="/" /> : <LoginPage />} />
                 <Route path="/register" element={token ? <Navigate to="/" /> : <RegisterPage />} />
+                <Route path="/forgot-password" element={token ? <Navigate to="/" /> : <ForgotPasswordPage />} />
 
                 {/* Protected Routes */}
                 <Route

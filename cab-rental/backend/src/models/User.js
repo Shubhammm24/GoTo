@@ -24,6 +24,8 @@ const userSchema = new mongoose.Schema({
   rating: { type: Number, default: 0 },
   reviewCount: { type: Number, default: 0 },
   isVerified: { type: Boolean, default: false },
+  isEmailVerified: { type: Boolean, default: false },
+  isPhoneVerified: { type: Boolean, default: false },
   identityProof: {
     docType: String,
     docNumber: String,

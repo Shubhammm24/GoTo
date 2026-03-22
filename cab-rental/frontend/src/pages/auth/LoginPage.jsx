@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/index';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuthStore();
+  const { login, isLoading, pendingUserId } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
 
@@ -27,6 +27,12 @@ const LoginPage = () => {
       toast.success('Welcome back!');
       navigate('/');
     } catch (error) {
+      // If account is unverified, redirect to register for OTP verification
+      if (error.response?.status === 403 && error.response?.data?.pendingVerification) {
+        toast.error('Please verify your account first');
+        navigate('/register');
+        return;
+      }
       toast.error(error.response?.data?.message || 'Login failed');
     }
   };
@@ -105,9 +111,9 @@ const LoginPage = () => {
                 <input type="checkbox" className="w-4 h-4 rounded border-white/20 bg-surface-2 accent-primary" />
                 <span className="text-sm text-white/50">Remember me</span>
               </label>
-              <a href="#" className="text-sm text-primary hover:text-primary-dark transition-colors font-medium">
+              <Link to="/forgot-password" className="text-sm text-primary hover:text-primary-dark transition-colors font-medium">
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
             {/* Submit */}
@@ -147,9 +153,10 @@ const LoginPage = () => {
           </Link>
         </div>
 
-        {/* Demo credentials */}
-        <div className="mt-4 glass-card rounded-2xl px-5 py-3 text-center">
-          <p className="text-white/30 text-xs">Demo: <span className="text-white/50 font-mono">demo@example.com</span> / <span className="text-white/50 font-mono">demo123</span></p>
+        {/* Security badge */}
+        <div className="mt-4 glass-card rounded-2xl px-5 py-3 flex items-center justify-center gap-2">
+          <AlertCircle size={14} className="text-primary" />
+          <p className="text-white/30 text-xs">Protected by OTP verification & encrypted sessions</p>
         </div>
       </motion.div>
     </div>

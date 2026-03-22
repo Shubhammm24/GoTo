@@ -92,6 +92,10 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (userData) => api.post('/auth/register', userData),
+  verifyOtp: (userId, code, type) => api.post('/auth/verify-otp', { userId, code, type }),
+  resendOtp: (userId, type) => api.post('/auth/resend-otp', { userId, type }),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (userId, code, newPassword) => api.post('/auth/reset-password', { userId, code, newPassword }),
   logout: (refreshToken) => api.post('/auth/logout', { refreshToken }),
   refreshToken: (refreshToken) => api.post('/auth/refresh-token', { refreshToken }),
 };
@@ -135,7 +139,7 @@ export const driversAPI = {
 export const parcelsAPI = {
   create: (data) => api.post('/parcels', data),
   getAll: () => api.get('/parcels'), // admin
-  getMyParcels: () => api.get('/parcels/my-parcels'),
+  getMyParcels: () => api.get('/parcels/user/me'),
   getById: (id) => api.get(`/parcels/${id}`),
   assignDriver: (id, driverId) => api.post(`/parcels/${id}/assign-driver`, { driverId }),
   confirmPickup: (id, pickupProof) => api.post(`/parcels/${id}/confirm-pickup`, { pickupProof }),
