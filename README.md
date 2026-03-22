@@ -18,7 +18,7 @@
 
 ## ✨ Overview
 
-**GoTo** is a production-ready, full-stack cab rental and tracking platform aiming to seamlessly connect customers with drivers in real-time. Built around a robust, Event-Driven WebSocket architecture and MongoDB Geospatial routing, this application actively manages dynamic driver matching, live GPS tracking, exact route pricing, and secure role-based access.
+**GoTo** is a full-stack cab rental,parcel delievery and tracking platform aiming to seamlessly connect customers with drivers in real-time. Built around a robust, Event-Driven WebSocket architecture and MongoDB Geospatial routing, this application actively manages dynamic driver matching, live GPS tracking, exact route pricing, and secure role-based access.
 
 ---
 
