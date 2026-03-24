@@ -1,23 +1,50 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, UserCheck, CheckCircle, Shield } from 'lucide-react';
+import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, UserCheck, CheckCircle, Shield, Car, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/index';
 import OtpInput from '../../components/OtpInput';
 
 const STEPS = {
+  ROLE: 'role',
   FORM: 'form',
   VERIFY: 'verify',
   SUCCESS: 'success',
 };
 
+const ROLES = [
+  {
+    id: 'customer',
+    label: 'Customer',
+    desc: 'Book rides, send parcels & track deliveries',
+    icon: Users,
+    emoji: '🧑',
+    gradient: 'from-blue-500 to-cyan-500',
+    border: 'border-blue-500/40',
+    bg: 'bg-blue-500/10',
+    text: 'text-blue-400',
+  },
+  {
+    id: 'driver',
+    label: 'Driver',
+    desc: 'Drive vehicles, earn money & manage rides',
+    icon: Car,
+    emoji: '🚗',
+    gradient: 'from-green-500 to-emerald-500',
+    border: 'border-green-500/40',
+    bg: 'bg-green-500/10',
+    text: 'text-green-400',
+  },
+];
+
 const RegisterPage = () => {
   const navigate = useNavigate();
   const { register, verifyOtp, resendOtp, isLoading, isEmailVerified, isPhoneVerified, pendingUserId, devOtps } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
-  const [step, setStep] = useState(STEPS.FORM);
-  const [verifyingType, setVerifyingType] = useState('email'); // which OTP we're currently verifying
+  const [step, setStep] = useState(STEPS.ROLE);
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [verifyingType, setVerifyingType] = useState('email');
   const [emailCountdown, setEmailCountdown] = useState(0);
   const [phoneCountdown, setPhoneCountdown] = useState(0);
   const [formData, setFormData] = useState({
@@ -33,7 +60,6 @@ const RegisterPage = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Countdown timers for resend OTP
   useEffect(() => {
     if (emailCountdown > 0) {
       const timer = setTimeout(() => setEmailCountdown(emailCountdown - 1), 1000);
@@ -47,6 +73,11 @@ const RegisterPage = () => {
       return () => clearTimeout(timer);
     }
   }, [phoneCountdown]);
+
+  const handleRoleSelect = (role) => {
+    setSelectedRole(role);
+    setStep(STEPS.FORM);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,7 +95,7 @@ const RegisterPage = () => {
     }
     try {
       const { confirmPassword, ...registerData } = formData;
-      await register(registerData);
+      await register({ ...registerData, role: selectedRole });
       toast.success('OTP sent to your email and phone!');
       setStep(STEPS.VERIFY);
       setVerifyingType('email');
@@ -104,20 +135,16 @@ const RegisterPage = () => {
     }
   };
 
-  const roles = [
-    { value: 'customer', label: 'Customer', desc: 'Book rides & parcels', icon: '🧑' },
-    { value: 'driver', label: 'Driver', desc: 'Drive & earn money', icon: '🚗' },
-  ];
+  const currentRoleConfig = ROLES.find(r => r.id === selectedRole);
 
   const slideVariants = {
-    enter: (direction) => ({ x: direction > 0 ? 300 : -300, opacity: 0 }),
+    enter: { x: 300, opacity: 0 },
     center: { x: 0, opacity: 1 },
-    exit: (direction) => ({ x: direction > 0 ? -300 : 300, opacity: 0 }),
+    exit: { x: -300, opacity: 0 },
   };
 
   return (
     <div className="min-h-screen bg-bg-dark flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      {/* Background */}
       <div className="absolute inset-0 map-grid-bg opacity-40" />
       <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -138,31 +165,68 @@ const RegisterPage = () => {
             Go<span className="text-primary">To</span>
           </h1>
           <p className="text-white/40 mt-1 text-sm">
-            {step === STEPS.FORM && 'Create your account to get started'}
+            {step === STEPS.ROLE && 'Choose how you want to use GoTo'}
+            {step === STEPS.FORM && `Create your ${currentRoleConfig?.label || ''} account`}
             {step === STEPS.VERIFY && 'Verify your identity'}
-            {step === STEPS.SUCCESS && 'You\'re all set!'}
+            {step === STEPS.SUCCESS && "You're all set!"}
           </p>
         </div>
 
-        {/* Progress Indicator */}
-        {step !== STEPS.FORM && (
-          <div className="flex justify-center gap-2 mb-6">
-            {['form', 'verify', 'success'].map((s, i) => (
-              <div
-                key={s}
-                className={`h-1.5 rounded-full transition-all duration-500 ${
-                  i <= ['form', 'verify', 'success'].indexOf(step)
-                    ? 'w-10 bg-primary'
-                    : 'w-6 bg-white/10'
-                }`}
-              />
-            ))}
-          </div>
-        )}
+        {/* Progress dots */}
+        <div className="flex justify-center gap-2 mb-6">
+          {['role', 'form', 'verify', 'success'].map((s, i) => (
+            <div
+              key={s}
+              className={`h-1.5 rounded-full transition-all duration-500 ${
+                i <= ['role', 'form', 'verify', 'success'].indexOf(step)
+                  ? 'w-10 bg-primary'
+                  : 'w-6 bg-white/10'
+              }`}
+            />
+          ))}
+        </div>
 
         {/* Card */}
         <div className="glass-card rounded-3xl p-8 shadow-glass overflow-hidden">
-          <AnimatePresence mode="wait" custom={step === STEPS.FORM ? -1 : 1}>
+          <AnimatePresence mode="wait">
+            {/* ─── STEP 0: Role Selection ─── */}
+            {step === STEPS.ROLE && (
+              <motion.div
+                key="role"
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+              >
+                <h2 className="text-lg font-bold text-white text-center mb-5">I want to join as a...</h2>
+                <div className="space-y-3">
+                  {ROLES.map((role, i) => (
+                    <motion.button
+                      key={role.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      onClick={() => handleRoleSelect(role.id)}
+                      className={`w-full group relative overflow-hidden rounded-2xl border ${role.border} ${role.bg} p-5 text-left transition-all duration-300 hover:scale-[1.02] hover:shadow-lg`}
+                    >
+                      <div className={`absolute inset-0 bg-gradient-to-r ${role.gradient} opacity-0 group-hover:opacity-10 transition-opacity`} />
+                      <div className="relative flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-xl ${role.bg} flex items-center justify-center text-2xl`}>
+                          {role.emoji}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`font-bold ${role.text} text-base`}>{role.label}</p>
+                          <p className="text-white/40 text-xs mt-0.5">{role.desc}</p>
+                        </div>
+                        <ArrowRight size={18} className={`${role.text} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             {/* ─── STEP 1: Registration Form ─── */}
             {step === STEPS.FORM && (
               <motion.div
@@ -171,9 +235,22 @@ const RegisterPage = () => {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                custom={1}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
               >
+                {/* Role badge */}
+                {currentRoleConfig && (
+                  <div className="flex justify-center mb-5">
+                    <button
+                      onClick={() => setStep(STEPS.ROLE)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-full ${currentRoleConfig.bg} border ${currentRoleConfig.border} transition-all hover:opacity-80`}
+                    >
+                      <span className="text-sm">{currentRoleConfig.emoji}</span>
+                      <span className={`text-xs font-bold ${currentRoleConfig.text}`}>{currentRoleConfig.label}</span>
+                      <span className="text-white/30 text-[10px]">· tap to change</span>
+                    </button>
+                  </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Full Name */}
                   <div>
@@ -244,7 +321,6 @@ const RegisterPage = () => {
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
-                    {/* Password strength indicators */}
                     {formData.password && (
                       <div className="mt-2 flex gap-1">
                         {[
@@ -291,7 +367,6 @@ const RegisterPage = () => {
                     </span>
                   </label>
 
-                  {/* Submit */}
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -307,11 +382,19 @@ const RegisterPage = () => {
                     ) : (
                       <>
                         <UserCheck size={18} />
-                        Create Account
+                        Create {currentRoleConfig?.label} Account
                       </>
                     )}
                   </motion.button>
                 </form>
+
+                <button
+                  onClick={() => setStep(STEPS.ROLE)}
+                  className="mt-4 flex items-center justify-center gap-1 text-white/30 hover:text-white/60 text-sm mx-auto transition-colors"
+                >
+                  <ArrowLeft size={14} />
+                  Change role
+                </button>
               </motion.div>
             )}
 
@@ -323,11 +406,9 @@ const RegisterPage = () => {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                custom={1}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="text-center"
               >
-                {/* Verification status pills */}
                 <div className="flex justify-center gap-3 mb-6">
                   <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                     isEmailVerified
@@ -376,7 +457,7 @@ const RegisterPage = () => {
 
                 <div className="my-6">
                   <OtpInput
-                    key={verifyingType} // reset on type change
+                    key={verifyingType}
                     length={6}
                     onComplete={handleOtpComplete}
                     disabled={isLoading}
@@ -389,7 +470,6 @@ const RegisterPage = () => {
                   </div>
                 )}
 
-                {/* Resend */}
                 <div className="mt-4">
                   {(verifyingType === 'email' ? emailCountdown : phoneCountdown) > 0 ? (
                     <p className="text-white/30 text-sm">
@@ -409,7 +489,6 @@ const RegisterPage = () => {
                   )}
                 </div>
 
-                {/* Back button */}
                 <button
                   onClick={() => setStep(STEPS.FORM)}
                   className="mt-6 flex items-center justify-center gap-1 text-white/30 hover:text-white/60 text-sm mx-auto transition-colors"
@@ -428,7 +507,6 @@ const RegisterPage = () => {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                custom={1}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="text-center py-6"
               >
@@ -441,15 +519,15 @@ const RegisterPage = () => {
                 </motion.div>
                 <h2 className="text-2xl font-bold text-white mb-2">Account Verified!</h2>
                 <p className="text-white/40 text-sm mb-6">
-                  Your account has been created and verified successfully.
+                  Your {currentRoleConfig?.label.toLowerCase()} account has been created and verified.
                 </p>
                 <p className="text-white/30 text-xs">Redirecting to login...</p>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Footer links (only on form step) */}
-          {step === STEPS.FORM && (
+          {/* Footer links */}
+          {(step === STEPS.ROLE || step === STEPS.FORM) && (
             <>
               <div className="my-5 flex items-center gap-3">
                 <div className="flex-1 h-px bg-white/10" />

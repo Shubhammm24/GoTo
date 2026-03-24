@@ -27,11 +27,15 @@ const generateRefreshToken = async (userId) => {
 // Step 1: Create user → send OTPs to email + phone
 exports.register = async (req, res) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, role } = req.body;
 
     if (!name || !email || !phone || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
+
+    // Validate role — only customer and driver can self-register
+    const validRoles = ["customer", "driver"];
+    const userRole = validRoles.includes(role) ? role : "customer";
 
     const passwordError = validatePassword(password);
     if (passwordError) {
@@ -111,7 +115,7 @@ exports.register = async (req, res) => {
       email,
       phone,
       password: hashedPassword,
-      role: "customer"
+      role: userRole
     });
 
     const emailResult = await createAndSendOtp(user._id, "email", email, "registration");

@@ -1,20 +1,56 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Users, Car, Shield } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/index';
 
+const ROLE_TABS = [
+  {
+    id: 'customer',
+    label: 'Customer',
+    emoji: '🧑',
+    gradient: 'from-blue-500 to-cyan-500',
+    border: 'border-blue-500/40',
+    bg: 'bg-blue-500/10',
+    text: 'text-blue-400',
+    activeBg: 'bg-blue-500',
+  },
+  {
+    id: 'driver',
+    label: 'Driver',
+    emoji: '🚗',
+    gradient: 'from-green-500 to-emerald-500',
+    border: 'border-green-500/40',
+    bg: 'bg-green-500/10',
+    text: 'text-green-400',
+    activeBg: 'bg-green-500',
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    emoji: '🛡️',
+    gradient: 'from-purple-500 to-pink-500',
+    border: 'border-purple-500/40',
+    bg: 'bg-purple-500/10',
+    text: 'text-purple-400',
+    activeBg: 'bg-purple-500',
+  },
+];
+
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, isLoading, pendingUserId } = useAuthStore();
+  const { login, isLoading } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  const [activeRole, setActiveRole] = useState('customer');
   const [formData, setFormData] = useState({ email: '', password: '' });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
+  const currentRole = ROLE_TABS.find(r => r.id === activeRole);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,11 +59,15 @@ const LoginPage = () => {
       return;
     }
     try {
-      await login(formData.email, formData.password);
+      const result = await login(formData.email, formData.password);
+      // Verify the logged-in user's role matches the selected tab
+      if (result.user?.role && result.user.role !== activeRole) {
+        toast.error(`This account is registered as a ${result.user.role}, not ${activeRole}`);
+        // Still logged in — redirect to the right dashboard
+      }
       toast.success('Welcome back!');
       navigate('/');
     } catch (error) {
-      // If account is unverified, redirect to register for OTP verification
       if (error.response?.status === 403 && error.response?.data?.pendingVerification) {
         toast.error('Please verify your account first');
         navigate('/register');
@@ -39,7 +79,6 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-bg-dark flex items-center justify-center px-4 py-12 relative overflow-hidden">
-      {/* Background decoration */}
       <div className="absolute inset-0 map-grid-bg opacity-40" />
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -65,6 +104,47 @@ const LoginPage = () => {
 
         {/* Card */}
         <div className="glass-card rounded-3xl p-8 shadow-glass">
+          {/* ─── Role Tabs ─── */}
+          <div className="flex gap-2 mb-6 p-1 bg-white/5 rounded-2xl">
+            {ROLE_TABS.map((role) => (
+              <button
+                key={role.id}
+                onClick={() => setActiveRole(role.id)}
+                className={`flex-1 relative flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 ${
+                  activeRole === role.id
+                    ? `${role.activeBg} text-white shadow-lg`
+                    : 'text-white/40 hover:text-white/60'
+                }`}
+              >
+                <span className="text-sm">{role.emoji}</span>
+                {role.label}
+                {activeRole === role.id && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute inset-0 rounded-xl -z-10"
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Role-specific subtitle */}
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={activeRole}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.2 }}
+              className={`text-center text-xs mb-5 ${currentRole?.text}`}
+            >
+              {activeRole === 'customer' && '📍 Book rides, track deliveries & manage trips'}
+              {activeRole === 'driver' && '🚗 Accept rides, earn money & manage schedule'}
+              {activeRole === 'admin' && '🛡️ Manage platform, users, vehicles & analytics'}
+            </motion.p>
+          </AnimatePresence>
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
             <div>
@@ -122,7 +202,9 @@ const LoginPage = () => {
               whileTap={{ scale: 0.98 }}
               disabled={isLoading}
               type="submit"
-              className="w-full btn-primary flex items-center justify-center gap-2 py-3.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                currentRole?.activeBg || 'bg-primary'
+              } hover:opacity-90`}
             >
               {isLoading ? (
                 <>
@@ -131,7 +213,7 @@ const LoginPage = () => {
                 </>
               ) : (
                 <>
-                  Sign In
+                  Sign In as {currentRole?.label}
                   <ArrowRight size={18} />
                 </>
               )}
