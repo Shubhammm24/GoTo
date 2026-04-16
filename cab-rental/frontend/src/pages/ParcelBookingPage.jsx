@@ -1,12 +1,25 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Package, MapPin, Truck, Bike, Weight, Ruler,
     ArrowRight, CheckCircle, AlertCircle, Info, Upload, X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { parcelsAPI } from '../services/api'; // Ensure this is exported in api.js
+import { parcelsAPI } from '../services/api';
 import toast from 'react-hot-toast';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+
+const MAPS_LIBRARIES = ['places'];
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+const DARK_MAP_STYLES = [
+  { elementType: 'geometry', stylers: [{ color: '#0a0f1e' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0f1e' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1f2937' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c1825' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+];
 
 /* ─── Components ───────────────────────────────────────────── */
 
@@ -28,53 +41,69 @@ const StepIndicator = ({ step, currentStep }) => {
     );
 };
 
-/* ─── Main Page ────────────────────────────────────────────── */
+function MapSelector({ onSelect, initialCoords }) {
+  const { isLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY, libraries: MAPS_LIBRARIES });
+  const [position, setPosition] = useState(
+    initialCoords ? { lat: initialCoords[1], lng: initialCoords[0] } : null
+  );
+  const DEFAULT_CENTER = { lat: 28.6139, lng: 77.2090 };
 
-/* ─── Map Selector Component ────────────────────────────────── */
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+  const handleClick = async (e) => {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    setPosition({ lat, lng });
+    onSelect([lng, lat]);
+  };
 
-// Fix leafet icon
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+  if (!isLoaded) return <div className="h-48 rounded-xl border border-white/10 flex items-center justify-center bg-surface-2 mb-4"><span className="text-white/30 text-xs">Loading map...</span></div>;
 
-function MapSelector({ onSelect, initialPos }) {
-    const [position, setPosition] = useState(initialPos ? { lat: initialPos[1], lng: initialPos[0] } : null);
+  return (
+    <div className="h-48 rounded-xl overflow-hidden border border-white/10 mb-4 relative">
+      <GoogleMap
+        mapContainerStyle={{ width: '100%', height: '100%' }}
+        center={position || DEFAULT_CENTER}
+        zoom={position ? 15 : 11}
+        options={{ styles: DARK_MAP_STYLES, disableDefaultUI: true, gestureHandling: 'greedy' }}
+        onClick={handleClick}
+      >
+        {position && <Marker position={position} />}
+      </GoogleMap>
+      <div className="absolute top-2 right-2 bg-black/80 text-white text-[10px] px-2 py-1 rounded pointer-events-none">
+        Click map to select
+      </div>
+    </div>
+  );
+}
 
-    const MapEvents = () => {
-        useMapEvents({
-            click(e) {
-                setPosition(e.latlng);
-                onSelect([e.latlng.lng, e.latlng.lat]);
-            },
-        });
-        return null;
-    };
-
-    return (
-        <div className="h-48 rounded-xl overflow-hidden border border-white/10 mb-4 relative z-0">
-            <MapContainer
-                center={initialPos ? { lat: initialPos[1], lng: initialPos[0] } : { lat: 28.6139, lng: 77.2090 }}
-                zoom={13}
-                style={{ height: '100%', width: '100%' }}
-            >
-                <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                />
-                {position && <Marker position={position} />}
-                <MapEvents />
-            </MapContainer>
-            <div className="absolute top-2 right-2 bg-black/80 text-white text-[10px] px-2 py-1 rounded z-[1000] pointer-events-none">
-                Tap map to select
-            </div>
-        </div>
-    );
+/* ─── Google Places Address Input ──────────────────────────── */
+function PlacesInput({ value, onChange, onPlaceSelect, placeholder, className }) {
+  const inputRef = useRef(null);
+  useEffect(() => {
+    if (!inputRef.current || !window.google?.maps?.places) return;
+    const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
+      componentRestrictions: { country: 'in' },
+      fields: ['geometry', 'formatted_address'],
+    });
+    ac.addListener('place_changed', () => {
+      const place = ac.getPlace();
+      if (!place.geometry?.location) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      onChange(place.formatted_address || '');
+      if (onPlaceSelect) onPlaceSelect([lng, lat]);
+    });
+    return () => window.google.maps.event.clearInstanceListeners(ac);
+  }, [window.google?.maps?.places]);
+  return (
+    <input
+      ref={inputRef}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={className}
+      style={{ background: 'rgba(255,255,255,0.05)' }}
+    />
+  );
 }
 
 export default function ParcelBookingPage() {
@@ -266,16 +295,23 @@ export default function ParcelBookingPage() {
                                     </div>
                                 </div>
 
+                                {/* Google Places Address input */}
                                 <div>
-                                    <label className={lbl}>Apartment / Street Address</label>
-                                    <input
-                                        className={inp}
+                                    <label className={lbl}>Search Address (powered by Google)</label>
+                                    <PlacesInput
                                         value={form.pickupAddress}
-                                        onChange={e => setForm({ ...form, pickupAddress: e.target.value })}
-                                        placeholder="e.g. 123 Main St, Floor 2"
-                                        autoFocus
+                                        onChange={v => setForm({ ...form, pickupAddress: v })}
+                                        onPlaceSelect={coords => setForm(f => ({ ...f, pickupCoords: coords }))}
+                                        placeholder="e.g. 123 Main St, Mumbai"
+                                        className={inp}
                                     />
                                 </div>
+
+                                {/* Map fallback for precise pin drop */}
+                                <MapSelector
+                                    onSelect={coords => setForm(f => ({ ...f, pickupCoords: coords }))}
+                                    initialCoords={form.pickupCoords}
+                                />
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
@@ -317,16 +353,23 @@ export default function ParcelBookingPage() {
                                     </div>
                                 </div>
 
+                                {/* Google Places Address input */}
                                 <div>
-                                    <label className={lbl}>Apartment / Street Address</label>
-                                    <input
-                                        className={inp}
+                                    <label className={lbl}>Search Address (powered by Google)</label>
+                                    <PlacesInput
                                         value={form.dropAddress}
-                                        onChange={e => setForm({ ...form, dropAddress: e.target.value })}
-                                        placeholder="e.g. 456 Corporate Park"
-                                        autoFocus
+                                        onChange={v => setForm({ ...form, dropAddress: v })}
+                                        onPlaceSelect={coords => setForm(f => ({ ...f, dropCoords: coords }))}
+                                        placeholder="e.g. 456 Corporate Park, Delhi"
+                                        className={inp}
                                     />
                                 </div>
+
+                                {/* Map fallback for precise pin drop */}
+                                <MapSelector
+                                    onSelect={coords => setForm(f => ({ ...f, dropCoords: coords }))}
+                                    initialCoords={form.dropCoords}
+                                />
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>

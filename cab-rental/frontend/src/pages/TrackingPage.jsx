@@ -1,26 +1,46 @@
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, Navigation, Clock, AlertCircle, Phone, Shield } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import { useState } from 'react';
 
-// Fix Leaflet icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const LIBRARIES = ['places'];
 
-const DARK_TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-const DARK_TILE_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const DARK_MAP_STYLES = [
+  { elementType: 'geometry', stylers: [{ color: '#0a0f1e' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0f1e' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1f2937' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#374151' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c1825' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d1d5db' }] },
+];
 
-// Placeholder driver location (Delhi)
-const DRIVER_POS = [28.6139, 77.2090];
+// Placeholder driver location (Delhi — will be replaced by real socket coords)
+const DRIVER_POS = { lat: 28.6139, lng: 77.2090 };
+
+const DRIVER_ICON = {
+  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="20" fill="#f97415" fill-opacity="0.25"/>
+      <circle cx="20" cy="20" r="14" fill="#f97415"/>
+      <text x="20" y="26" text-anchor="middle" font-size="16">🚗</text>
+    </svg>`),
+  scaledSize: { width: 40, height: 40 },
+  anchor: { x: 20, y: 20 },
+};
 
 const TrackingPage = () => {
   const { bookingId } = useParams();
+  const [showInfo, setShowInfo] = useState(false);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: LIBRARIES,
+  });
 
   return (
     <div className="min-h-screen bg-bg-dark py-6 px-4">
@@ -32,19 +52,47 @@ const TrackingPage = () => {
         >
           {/* Live Map */}
           <div className="w-full" style={{ height: '380px' }}>
-            <MapContainer
-              center={DRIVER_POS}
-              zoom={13}
-              style={{ width: '100%', height: '100%' }}
-            >
-              <TileLayer url={DARK_TILE} attribution={DARK_TILE_ATTR} />
-              <Marker position={DRIVER_POS}>
-                <Popup>
-                  <div className="text-xs font-semibold">🚗 Your Driver</div>
-                  <div className="text-xs text-gray-500">En route to pickup</div>
-                </Popup>
-              </Marker>
-            </MapContainer>
+            {!isLoaded && !loadError && (
+              <div className="w-full h-full flex items-center justify-center bg-surface-2">
+                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+              </div>
+            )}
+            {loadError && (
+              <div className="w-full h-full flex items-center justify-center bg-surface-2">
+                <p className="text-white/30 text-sm">Map unavailable</p>
+              </div>
+            )}
+            {isLoaded && (
+              <GoogleMap
+                mapContainerStyle={{ width: '100%', height: '100%' }}
+                center={DRIVER_POS}
+                zoom={14}
+                options={{
+                  styles: DARK_MAP_STYLES,
+                  disableDefaultUI: false,
+                  zoomControl: true,
+                  mapTypeControl: false,
+                  streetViewControl: false,
+                  fullscreenControl: false,
+                  gestureHandling: 'greedy',
+                }}
+              >
+                <Marker
+                  position={DRIVER_POS}
+                  icon={DRIVER_ICON}
+                  onClick={() => setShowInfo(true)}
+                  animation={window.google?.maps?.Animation?.BOUNCE}
+                />
+                {showInfo && (
+                  <InfoWindow position={DRIVER_POS} onCloseClick={() => setShowInfo(false)}>
+                    <div style={{ color: '#111', fontSize: 12 }}>
+                      <b>🚗 Your Driver</b><br />
+                      <span>En route to pickup</span>
+                    </div>
+                  </InfoWindow>
+                )}
+              </GoogleMap>
+            )}
           </div>
 
           {/* Details */}

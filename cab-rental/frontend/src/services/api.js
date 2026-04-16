@@ -98,6 +98,7 @@ export const authAPI = {
   resetPassword: (userId, code, newPassword) => api.post('/auth/reset-password', { userId, code, newPassword }),
   logout: (refreshToken) => api.post('/auth/logout', { refreshToken }),
   refreshToken: (refreshToken) => api.post('/auth/refresh-token', { refreshToken }),
+  googleAuth: (idToken, role) => api.post('/auth/google', { idToken, role }),
 };
 
 // ─── Bookings ────────────────────────────────────────────────

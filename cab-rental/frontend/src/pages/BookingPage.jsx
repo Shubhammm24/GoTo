@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import {
+  GoogleMap, useJsApiLoader, Marker, DirectionsRenderer, InfoWindow
+} from '@react-google-maps/api';
 import {
   MapPin, Navigation, Clock, IndianRupee, X, Loader2,
   Crosshair, Package, Car, Bike, ChevronRight, CheckCircle2, Star, User
@@ -17,133 +17,121 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/index';
 import toast from 'react-hot-toast';
 
-/* ─── Leaflet Icon Fix ────────────────────────────────────── */
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+const MAPS_LIBRARIES = ['places'];
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-const mkIcon = (color) => new L.Icon({
-  iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
-});
+/* ─── Google Maps Marker Icons ────────────────────────────── */
+const PICKUP_ICON = {
+  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+    <svg width="32" height="40" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 0C7.16 0 0 7.16 0 16c0 11.84 16 24 16 24s16-12.16 16-24C32 7.16 24.84 0 16 0z" fill="#22c55e"/>
+      <circle cx="16" cy="16" r="7" fill="white"/>
+    </svg>`),
+  scaledSize: { width: 32, height: 40 },
+  anchor: { x: 16, y: 40 },
+};
+const DROPOFF_ICON = {
+  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+    <svg width="32" height="40" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 0C7.16 0 0 7.16 0 16c0 11.84 16 24 16 24s16-12.16 16-24C32 7.16 24.84 0 16 0z" fill="#f97415"/>
+      <circle cx="16" cy="16" r="7" fill="white"/>
+    </svg>`),
+  scaledSize: { width: 32, height: 40 },
+  anchor: { x: 16, y: 40 },
+};
+const DRIVER_ICON = {
+  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="18" cy="18" r="18" fill="#fbbf24" fill-opacity="0.2"/>
+      <circle cx="18" cy="18" r="12" fill="#fbbf24"/>
+      <text x="18" y="23" text-anchor="middle" font-size="14">🚗</text>
+    </svg>`),
+  scaledSize: { width: 36, height: 36 },
+  anchor: { x: 18, y: 18 },
+};
 
-const pickupIcon = mkIcon('green');
-const dropoffIcon = mkIcon('red');
-const driverIcon = mkIcon('orange');
+/* ─── Google Map Dark Style ───────────────────────────────── */
+const DARK_MAP_STYLES = [
+  { elementType: 'geometry', stylers: [{ color: '#0a0f1e' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0f1e' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1f2937' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#111827' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#374151' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2937' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c1825' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d1d5db' }] },
+  { featureType: 'administrative.country', elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
+  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#4b5563' }] },
+];
 
-/* ─── Map Helpers ─────────────────────────────────────────── */
-function MapClickHandler({ onSelect, active }) {
-  useMapEvents({
-    click: async (e) => {
-      if (!active) return;
-      const { lat, lng } = e.latlng;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-        const data = await res.json();
-        onSelect({ lat, lng, address: data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
-      } catch {
-        onSelect({ lat, lng, address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` });
-      }
-    },
-  });
-  return null;
-}
-
-function FlyTo({ pos }) {
-  const map = useMap();
-  useEffect(() => { if (pos) map.flyTo([pos.lat, pos.lng], 14, { duration: 1 }); }, [pos]);
-  return null;
-}
-
-/* ─── Nominatim Search ────────────────────────────────────── */
+/* ─── Google Places Autocomplete Input ───────────────────── */
 function LocationInput({ label, icon, iconColor, value, onSelect, placeholder }) {
+  const inputRef = useRef(null);
+  const autocompleteRef = useRef(null);
   const [q, setQ] = useState(value?.address || '');
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const timer = useRef(null);
-  const ref = useRef(null);
 
   useEffect(() => { setQ(value?.address || ''); }, [value]);
 
+  // Initialize Google Places Autocomplete
   useEffect(() => {
-    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, []);
+    if (!inputRef.current || !window.google?.maps?.places) return;
+    const ac = new window.google.maps.places.Autocomplete(inputRef.current, {
+      componentRestrictions: { country: 'in' },
+      fields: ['geometry', 'formatted_address', 'name'],
+    });
+    autocompleteRef.current = ac;
+    ac.addListener('place_changed', () => {
+      const place = ac.getPlace();
+      if (!place.geometry?.location) return;
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+      const address = place.formatted_address || place.name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      setQ(address);
+      onSelect({ lat, lng, address });
+    });
+    return () => window.google.maps.event.clearInstanceListeners(ac);
+  }, [window.google?.maps?.places]);
 
-  const search = (val) => {
-    setQ(val);
-    clearTimeout(timer.current);
-    if (val.length < 3) { setResults([]); return; }
-    timer.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&countrycodes=in`);
-        const data = await res.json();
-        setResults(data.map(r => ({ display_name: r.display_name, lat: +r.lat, lng: +r.lon })));
-        setOpen(true);
-      } catch { setResults([]); }
-      finally { setLoading(false); }
-    }, 400);
-  };
-
-  const pick = (r) => {
-    setQ(r.display_name);
-    onSelect({ lat: r.lat, lng: r.lng, address: r.display_name });
-    setResults([]); setOpen(false);
-  };
-
-  const clear = () => { setQ(''); onSelect(null); setResults([]); };
+  const clear = () => { setQ(''); onSelect(null); };
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1.5">{label}</label>
       <div className="relative">
-        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${iconColor}`}>{icon}</span>
+        <span className={`absolute left-3 top-1/2 -translate-y-1/2 ${iconColor} z-10`}>{icon}</span>
         <input
+          ref={inputRef}
           value={q}
-          onChange={e => search(e.target.value)}
-          onFocus={() => results.length && setOpen(true)}
+          onChange={e => setQ(e.target.value)}
           placeholder={placeholder}
           className="w-full bg-white/5 border border-white/10 text-white placeholder-white/30 rounded-xl pl-9 pr-8 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
+          style={{ background: 'rgba(255,255,255,0.05)' }}
         />
-        {loading && <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 animate-spin" />}
-        {q && !loading && (
+        {q && (
           <button onClick={clear} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60">
             <X size={13} />
           </button>
         )}
       </div>
-      <AnimatePresence>
-        {open && results.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className="absolute z-[9999] top-full mt-1 w-full rounded-xl border border-white/10 overflow-hidden shadow-glass"
-            style={{ background: 'rgba(17,24,39,0.97)', backdropFilter: 'blur(20px)' }}
-          >
-            {results.map((r, i) => (
-              <button key={i} onClick={() => pick(r)}
-                className="w-full text-left px-3 py-2.5 text-xs text-white/60 hover:bg-white/5 hover:text-white transition-colors border-b border-white/5 last:border-0 flex items-start gap-2">
-                <MapPin size={10} className="text-primary mt-0.5 shrink-0" />
-                <span className="line-clamp-2">{r.display_name}</span>
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
 
 /* ─── Constants ───────────────────────────────────────────── */
-const DARK_TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-const DARK_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
-const INDIA_CENTER = [20.5937, 78.9629];
+const INDIA_CENTER = { lat: 20.5937, lng: 78.9629 };
+const MAP_CONTAINER_STYLE = { width: '100%', height: '100%' };
+const MAP_OPTIONS = {
+  styles: DARK_MAP_STYLES,
+  disableDefaultUI: false,
+  zoomControl: true,
+  mapTypeControl: false,
+  streetViewControl: false,
+  fullscreenControl: true,
+  gestureHandling: 'greedy',
+};
 
 const SERVICE_TABS = [
   { id: 'ride', label: 'Book Ride', icon: '🚗' },
@@ -172,8 +160,30 @@ function haversine(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
+/* ─── Geocode with Google ─────────────────────────────────── */
+async function googleReverseGeocode(lat, lng) {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === 'OK' && data.results.length > 0) {
+      return data.results[0].formatted_address;
+    }
+  } catch {}
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
 /* ─── Main Component ──────────────────────────────────────── */
 export default function BookingPage() {
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: MAPS_LIBRARIES,
+  });
+  const mapRef = useRef(null);
+  const [mapCenter, setMapCenter] = useState(INDIA_CENTER);
+  const [mapZoom, setMapZoom] = useState(5);
+  const [directions, setDirections] = useState(null);
+  const [infoWindow, setInfoWindow] = useState(null); // { pos, content }
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
@@ -225,7 +235,7 @@ export default function BookingPage() {
   const [nearbyDrivers, setNearbyDrivers] = useState([]);
   const driverPollRef = useRef(null);
 
-  /* ── GPS: Use Current Location ─────────────────────────── */
+  /* ── GPS: Use Current Location (Google Geocoding) ─────── */
   const useCurrentLocation = useCallback((field) => {
     if (!navigator.geolocation) {
       toast.error('Geolocation not supported by your browser');
@@ -235,21 +245,21 @@ export default function BookingPage() {
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         const { latitude: lat, longitude: lng } = coords;
-        try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
-          const data = await res.json();
-          const loc = { lat, lng, address: data.display_name || 'Current Location' };
-          if (field === 'pickup') { setPickup(loc); setFlyPos(loc); }
-          else { setDropoff(loc); setFlyPos(loc); }
-          toast.success(`${field === 'pickup' ? 'Pickup' : 'Dropoff'} set to current location`);
-        } catch {
-          const loc = { lat, lng, address: 'Current Location' };
-          if (field === 'pickup') { setPickup(loc); setFlyPos(loc); }
-          else { setDropoff(loc); setFlyPos(loc); }
+        const address = await googleReverseGeocode(lat, lng);
+        const loc = { lat, lng, address };
+        if (field === 'pickup') {
+          setPickup(loc);
+          setMapCenter({ lat, lng });
+          setMapZoom(15);
+        } else {
+          setDropoff(loc);
+          setMapCenter({ lat, lng });
+          setMapZoom(15);
         }
+        toast.success(`${field === 'pickup' ? 'Pickup' : 'Dropoff'} set to current location`);
         setGpsLoading(null);
       },
-      (err) => {
+      () => {
         setGpsLoading(null);
         toast.error('Could not get your location. Please allow location access.');
       },
@@ -257,28 +267,57 @@ export default function BookingPage() {
     );
   }, []);
 
-  /* ── Map click handler ─────────────────────────────────── */
-  const handleMapClick = useCallback((loc) => {
-    if (clickMode === 'pickup') { setPickup(loc); setFlyPos(loc); }
-    if (clickMode === 'dropoff') { setDropoff(loc); setFlyPos(loc); }
+  /* ── Google Map click handler ──────────────────────────── */
+  const handleMapClick = useCallback(async (e) => {
+    if (!clickMode) return;
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    const address = await googleReverseGeocode(lat, lng);
+    const loc = { lat, lng, address };
+    if (clickMode === 'pickup') { setPickup(loc); setMapCenter({ lat, lng }); setMapZoom(15); }
+    if (clickMode === 'dropoff') { setDropoff(loc); setMapCenter({ lat, lng }); setMapZoom(15); }
     setClickMode(null);
   }, [clickMode]);
 
-  /* ── Pricing ───────────────────────────────────────────── */
+  /* ── Google Directions + Pricing ──────────────────────── */
   useEffect(() => {
-    if (pickup && dropoff && (tab === 'ride')) {
+    if (pickup && dropoff && tab === 'ride' && isLoaded) {
       setIsCalc(true);
-      try {
-        const dist = haversine(pickup, dropoff);
-        const dur = (dist / 30) * 60;
-        const p = calculateRidePrice({ distance: dist, duration: dur, vehicleType, rentalType: 'driver-operated', surgeMultiplier: 1.0 });
-        setPricing(p);
-      } catch (e) { console.error(e); }
-      finally { setIsCalc(false); }
-    } else {
+      setDirections(null);
+      const service = new window.google.maps.DirectionsService();
+      service.route({
+        origin: { lat: pickup.lat, lng: pickup.lng },
+        destination: { lat: dropoff.lat, lng: dropoff.lng },
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      }, (result, status) => {
+        if (status === 'OK') {
+          setDirections(result);
+          const leg = result.routes[0].legs[0];
+          const dist = leg.distance.value / 1000; // km
+          const dur = leg.duration.value / 60; // minutes
+          const p = calculateRidePrice({ distance: dist, duration: dur, vehicleType, rentalType: 'driver-operated', surgeMultiplier: 1.0 });
+          setPricing({ ...p, distance: dist, duration: dur });
+          // Fit map to route
+          if (mapRef.current) {
+            const bounds = new window.google.maps.LatLngBounds();
+            bounds.extend({ lat: pickup.lat, lng: pickup.lng });
+            bounds.extend({ lat: dropoff.lat, lng: dropoff.lng });
+            mapRef.current.fitBounds(bounds, 80);
+          }
+        } else {
+          // Fallback to haversine
+          const dist = haversine(pickup, dropoff);
+          const dur = (dist / 30) * 60;
+          const p = calculateRidePrice({ distance: dist, duration: dur, vehicleType, rentalType: 'driver-operated', surgeMultiplier: 1.0 });
+          setPricing(p);
+        }
+        setIsCalc(false);
+      });
+    } else if (!pickup || !dropoff) {
       setPricing(null);
+      setDirections(null);
     }
-  }, [pickup, dropoff, vehicleType, tab]);
+  }, [pickup, dropoff, vehicleType, tab, isLoaded]);
 
   /* ── Fetch self-drive vehicles ─────────────────────────── */
   useEffect(() => {
@@ -917,54 +956,92 @@ export default function BookingPage() {
           </button>
         </div>
 
-        {/* ── MAP ── */}
+        {/* ── GOOGLE MAP ── */}
         <div className="flex-1 rounded-2xl overflow-hidden border border-white/10 relative" style={{ minHeight: '520px' }}>
           {/* Click mode banner */}
           {clickMode && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold text-white pointer-events-none"
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold text-white pointer-events-none"
               style={{ background: 'rgba(17,24,39,0.9)', backdropFilter: 'blur(12px)', border: '1px solid rgba(249,116,21,0.4)' }}>
               <div className={`w-2 h-2 rounded-full animate-pulse ${clickMode === 'pickup' ? 'bg-green-400' : 'bg-primary'}`} />
-              Click anywhere to set {clickMode}
+              Click anywhere on the map to set {clickMode}
             </div>
           )}
 
-          <MapContainer center={INDIA_CENTER} zoom={5} style={{ width: '100%', height: '100%' }}>
-            <TileLayer url={DARK_TILE} attribution={DARK_ATTR} />
-            <MapClickHandler onSelect={handleMapClick} active={!!clickMode} />
-            {flyPos && <FlyTo pos={flyPos} />}
+          {!isLoaded ? (
+            <div className="w-full h-full flex items-center justify-center bg-surface-2">
+              <Loader2 size={32} className="text-primary animate-spin" />
+            </div>
+          ) : loadError ? (
+            <div className="w-full h-full flex items-center justify-center bg-surface-2">
+              <p className="text-white/40 text-sm">Map failed to load. Check your API key.</p>
+            </div>
+          ) : (
+            <GoogleMap
+              mapContainerStyle={MAP_CONTAINER_STYLE}
+              center={mapCenter}
+              zoom={mapZoom}
+              options={MAP_OPTIONS}
+              onClick={handleMapClick}
+              onLoad={map => { mapRef.current = map; }}
+              cursor={clickMode ? 'crosshair' : 'default'}
+            >
+              {/* Pickup marker */}
+              {pickup && !directions && (
+                <Marker
+                  position={{ lat: pickup.lat, lng: pickup.lng }}
+                  icon={PICKUP_ICON}
+                  onClick={() => setInfoWindow({ pos: { lat: pickup.lat, lng: pickup.lng }, content: `📍 Pickup: ${pickup.address}` })}
+                />
+              )}
 
-            {pickup && (
-              <Marker position={[pickup.lat, pickup.lng]} icon={pickupIcon}>
-                <Popup><b>📍 Pickup</b><br /><span style={{ fontSize: 11 }}>{pickup.address}</span></Popup>
-              </Marker>
-            )}
-            {dropoff && (
-              <Marker position={[dropoff.lat, dropoff.lng]} icon={dropoffIcon}>
-                <Popup><b>🏁 {tab === 'parcel' ? 'Delivery' : 'Dropoff'}</b><br /><span style={{ fontSize: 11 }}>{dropoff.address}</span></Popup>
-              </Marker>
-            )}
-            {routeLine && (
-              <Polyline positions={routeLine} color="#f97415" weight={3} opacity={0.8} dashArray="10 6" />
-            )}
+              {/* Dropoff marker */}
+              {dropoff && !directions && (
+                <Marker
+                  position={{ lat: dropoff.lat, lng: dropoff.lng }}
+                  icon={DROPOFF_ICON}
+                  onClick={() => setInfoWindow({ pos: { lat: dropoff.lat, lng: dropoff.lng }, content: `🏁 ${tab === 'parcel' ? 'Delivery' : 'Dropoff'}: ${dropoff.address}` })}
+                />
+              )}
 
-            {/* Live nearby driver markers */}
-            {nearbyDrivers.map((d) => {
-              const loc = d.currentLocation?.coordinates;
-              if (!loc || loc.length < 2) return null;
-              return (
-                <Marker key={d._id} position={[loc[1], loc[0]]} icon={driverIcon}>
-                  <Popup>
-                    <div style={{ fontSize: 12, lineHeight: 1.4 }}>
-                      <b>{d.userId?.name || 'Driver'}</b><br />
-                      <span style={{ textTransform: 'capitalize' }}>{d.vehicleDetails?.vehicleType || 'car'}</span>
-                      {d.vehicleDetails?.brand ? ` • ${d.vehicleDetails.brand} ${d.vehicleDetails.model || ''}` : ''}<br />
-                      ⭐ {d.rating?.toFixed(1) || '4.5'} • {d.completedRides || 0} rides
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-          </MapContainer>
+              {/* Google Directions route */}
+              {directions && (
+                <DirectionsRenderer
+                  directions={directions}
+                  options={{
+                    suppressMarkers: false,
+                    polylineOptions: { strokeColor: '#f97415', strokeWeight: 5, strokeOpacity: 0.9 },
+                  }}
+                />
+              )}
+
+              {/* Live nearby driver markers */}
+              {nearbyDrivers.map((d) => {
+                const loc = d.currentLocation?.coordinates;
+                if (!loc || loc.length < 2) return null;
+                return (
+                  <Marker
+                    key={d._id}
+                    position={{ lat: loc[1], lng: loc[0] }}
+                    icon={DRIVER_ICON}
+                    onClick={() => setInfoWindow({
+                      pos: { lat: loc[1], lng: loc[0] },
+                      content: `🚗 ${d.userId?.name || 'Driver'} · ⭐${d.rating?.toFixed(1) || '4.5'} · ${d.completedRides || 0} rides`
+                    })}
+                  />
+                );
+              })}
+
+              {/* Info window */}
+              {infoWindow && (
+                <InfoWindow
+                  position={infoWindow.pos}
+                  onCloseClick={() => setInfoWindow(null)}
+                >
+                  <div style={{ color: '#111', fontSize: 12, maxWidth: 200 }}>{infoWindow.content}</div>
+                </InfoWindow>
+              )}
+            </GoogleMap>
+          )}
         </div>
       </div>
 

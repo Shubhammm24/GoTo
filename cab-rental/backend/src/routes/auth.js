@@ -10,7 +10,8 @@ const {
   verifyOtp,
   resendOtp,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  googleAuth
 } = require("../controllers/authController");
 
 // Stricter rate limit for OTP endpoints (5 requests per minute per IP)
@@ -43,5 +44,8 @@ router.post("/refresh-token", refreshToken);
 
 // LOGOUT (requires auth)
 router.post("/logout", auth(), logout);
+
+// GOOGLE AUTH — sign in or sign up via Google
+router.post("/google", googleAuth);
 
 module.exports = router;

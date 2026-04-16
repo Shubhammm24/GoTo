@@ -11,8 +11,10 @@ const userSchema = new mongoose.Schema({
     trim: true,
     match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format"]
   },
-  phone: { type: String, required: true, trim: true },
-  password: { type: String, required: true },
+  phone: { type: String, required: false, trim: true },
+  password: { type: String, required: false },
+  googleId: { type: String, sparse: true },
+  authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
   profileImage: String,
   address: String,
   dateOfBirth: Date,

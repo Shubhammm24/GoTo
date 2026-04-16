@@ -6,24 +6,89 @@ import {
   Shield, TrendingUp, IndianRupee, Clock, Bike, Navigation,
   ChevronRight, Eye, Phone, Star, X, Edit2
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import { adminAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
-// Fix leaflet default icon
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+const MAPS_LIBRARIES = ['places'];
 
-const driverIcon = new L.DivIcon({
-  html: `<div style="background:#f97415;border:2px solid white;border-radius:50%;width:14px;height:14px;box-shadow:0 0 8px rgba(249,116,21,0.8)"></div>`,
-  className: '', iconSize: [14, 14], iconAnchor: [7, 7],
-});
+const DARK_MAP_STYLES = [
+  { elementType: 'geometry', stylers: [{ color: '#0a0f1e' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0f1e' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1f2937' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#374151' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c1825' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+];
+
+const DRIVER_DOT_ICON = {
+  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+    <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="12" fill="#f97415" fill-opacity="0.3"/>
+      <circle cx="12" cy="12" r="7" fill="#f97415" stroke="white" stroke-width="2"/>
+    </svg>`),
+  scaledSize: { width: 24, height: 24 },
+  anchor: { x: 12, y: 12 },
+};
+
+/* ─── Live Admin Map (Google Maps) ─────────────────────────── */
+function LiveAdminMap({ liveLocations }) {
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: MAPS_LIBRARIES,
+  });
+  const [activeInfo, setActiveInfo] = useState(null);
+
+  if (loadError) return <div className="rounded-2xl border border-white/10 h-[500px] flex items-center justify-center"><p className="text-white/30">Map unavailable</p></div>;
+  if (!isLoaded) return <div className="rounded-2xl border border-white/10 h-[500px] flex items-center justify-center"><Loader2 size={24} className="text-primary animate-spin" /></div>;
+
+  return (
+    <div className="rounded-2xl overflow-hidden border border-white/10" style={{ height: '500px' }}>
+      <GoogleMap
+        mapContainerStyle={{ width: '100%', height: '100%' }}
+        center={{ lat: 20.5937, lng: 78.9629 }}
+        zoom={5}
+        options={{
+          styles: DARK_MAP_STYLES,
+          disableDefaultUI: false,
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          gestureHandling: 'greedy',
+        }}
+        onClick={() => setActiveInfo(null)}
+      >
+        {liveLocations.map(loc => {
+          if (!loc.coordinates || loc.coordinates.length < 2) return null;
+          const [lng, lat] = loc.coordinates;
+          return (
+            <Marker
+              key={loc.driverId}
+              position={{ lat, lng }}
+              icon={DRIVER_DOT_ICON}
+              onClick={() => setActiveInfo(loc)}
+            />
+          );
+        })}
+        {activeInfo && activeInfo.coordinates?.length >= 2 && (
+          <InfoWindow
+            position={{ lat: activeInfo.coordinates[1], lng: activeInfo.coordinates[0] }}
+            onCloseClick={() => setActiveInfo(null)}
+          >
+            <div style={{ fontSize: 12, color: '#111', minWidth: 120 }}>
+              <p style={{ fontWeight: 'bold', marginBottom: 2 }}>{activeInfo.name}</p>
+              <p style={{ color: '#555' }}>{activeInfo.phone}</p>
+              <p>⭐ {activeInfo.rating?.toFixed(1)} · {activeInfo.completedRides} rides</p>
+            </div>
+          </InfoWindow>
+        )}
+      </GoogleMap>
+    </div>
+  );
+}
 
 /* ─── Stat Card ─────────────────────────────────────────────── */
 function StatCard({ label, value, icon: Icon, color, bg, sub }) {
@@ -621,29 +686,7 @@ export default function AdminDashboard() {
                 <span className="text-white/40 text-xs">{liveLocations.length} online</span>
               </div>
             </div>
-            <div className="rounded-2xl overflow-hidden border border-white/10" style={{ height: '500px' }}>
-              <MapContainer center={[20.5937, 78.9629]} zoom={5} style={{ height: '100%', width: '100%' }}>
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; OpenStreetMap contributors'
-                />
-                {liveLocations.map(loc => {
-                  if (!loc.coordinates || loc.coordinates.length < 2) return null;
-                  const [lng, lat] = loc.coordinates;
-                  return (
-                    <Marker key={loc.driverId} position={[lat, lng]} icon={driverIcon}>
-                      <Popup>
-                        <div className="text-sm">
-                          <p className="font-bold">{loc.name}</p>
-                          <p className="text-gray-500">{loc.phone}</p>
-                          <p>⭐ {loc.rating?.toFixed(1)} · {loc.completedRides} rides</p>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  );
-                })}
-              </MapContainer>
-            </div>
+            <LiveAdminMap liveLocations={liveLocations} />
             {liveLocations.length === 0 && (
               <div className={`${card} text-center py-6`} style={cardStyle}>
                 <p className="text-white/40 text-sm">No drivers currently online with location data</p>

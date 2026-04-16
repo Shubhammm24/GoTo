@@ -5,6 +5,9 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { createAndSendOtp, verifyOtp } = require("../services/otpService");
 const Otp = require("../models/Otp");
+const { OAuth2Client } = require("google-auth-library");
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // ─── Password Validation ─────────────────────────────────────
 const validatePassword = (password) => {
@@ -431,5 +434,106 @@ exports.logout = async (req, res) => {
     res.json({ message: "Logged out successfully" });
   } catch (error) {
     res.status(500).json({ message: "Logout failed" });
+  }
+};
+
+// ─── GOOGLE AUTH (Login / Register) ──────────────────────────
+// Accepts a Google access_token from the frontend (implicit flow),
+// fetches user info from Google, then finds-or-creates a user
+// and returns a JWT + refreshToken pair.
+exports.googleAuth = async (req, res) => {
+  try {
+    const { idToken, role } = req.body; // idToken is actually the access_token from implicit flow
+
+    if (!idToken) {
+      return res.status(400).json({ message: "Google token is required" });
+    }
+
+    // Fetch user info from Google using the access token
+    let googleUser;
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/oauth2/v3/userinfo`,
+        { headers: { Authorization: `Bearer ${idToken}` } }
+      );
+
+      if (!response.ok) {
+        return res.status(401).json({ message: "Invalid Google token" });
+      }
+
+      googleUser = await response.json();
+    } catch (err) {
+      console.error("Google userinfo fetch error:", err);
+      return res.status(401).json({ message: "Failed to verify Google token" });
+    }
+
+    const { sub: googleId, email, name, picture, email_verified } = googleUser;
+
+    if (!email || !googleId) {
+      return res.status(400).json({ message: "Could not retrieve user info from Google" });
+    }
+
+    if (email_verified === false) {
+      return res.status(400).json({ message: "Google account email is not verified" });
+    }
+
+    // Try to find an existing user by Google ID or email
+    let user = await User.findOne({ $or: [{ googleId }, { email }] });
+
+    if (user) {
+      // Link Google account to existing local user if needed
+      if (!user.googleId) {
+        user.googleId = googleId;
+        if (picture && !user.profileImage) user.profileImage = picture;
+        // Mark email verified since Google verified it
+        user.isEmailVerified = true;
+        if (!user.phone) {
+          user.isVerified = true;
+        } else {
+          user.isVerified = user.isEmailVerified && user.isPhoneVerified;
+        }
+        await user.save();
+      }
+    } else {
+      // New user — create account
+      const validRoles = ["customer", "driver"];
+      const userRole = validRoles.includes(role) ? role : "customer";
+
+      user = await User.create({
+        name: name || "Google User",
+        email,
+        googleId,
+        authProvider: "google",
+        profileImage: picture || "",
+        role: userRole,
+        isEmailVerified: true,
+        isPhoneVerified: false,
+        isVerified: true, // Google already verified the email
+      });
+    }
+
+    // Generate JWT tokens
+    const accessToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    const refreshToken = await generateRefreshToken(user._id);
+
+    res.json({
+      token: accessToken,
+      refreshToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        role: user.role,
+        profileImage: user.profileImage || null,
+        isNewUser: !user.phone // flag so frontend knows if phone is missing
+      }
+    });
+  } catch (error) {
+    console.error("Google auth error:", error);
+    res.status(500).json({ message: "Google authentication failed" });
   }
 };

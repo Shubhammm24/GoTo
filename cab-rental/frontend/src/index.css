@@ -207,3 +207,56 @@ button {
     linear-gradient(90deg, rgba(249, 116, 21, 0.04) 1px, transparent 1px);
   background-size: 60px 60px;
 }
+
+/* ─── Google Places Autocomplete Dark Theme ──────────────── */
+.pac-container {
+  background: rgba(13, 18, 36, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(20px) !important;
+  margin-top: 4px !important;
+  overflow: hidden !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+.pac-container::after {
+  display: none !important; /* Hide Google logo */
+}
+
+.pac-item {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  padding: 10px 14px !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  transition: background 0.15s ease !important;
+}
+
+.pac-item:first-child {
+  border-top: none !important;
+}
+
+.pac-item:hover,
+.pac-item-selected {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.pac-item-query {
+  color: #f97415 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.pac-icon {
+  filter: invert(1) opacity(0.4) !important;
+  margin-right: 8px !important;
+}
+
+.pac-matched {
+  color: #f97415 !important;
+  font-weight: 700 !important;
+}
